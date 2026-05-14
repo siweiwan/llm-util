@@ -17,7 +17,7 @@ func (i menuItem) FilterValue() string { return i.title }
 
 type itemDelegate struct{}
 
-func (d itemDelegate) Height() int                             { return 1 }
+func (d itemDelegate) Height() int                             { return 2 }
 func (d itemDelegate) Spacing() int                            { return 0 }
 func (d itemDelegate) Update(_ tea.Msg, _ *list.Model) tea.Cmd { return nil }
 func (d itemDelegate) Render(w io.Writer, m list.Model, index int, item list.Item) {
@@ -25,13 +25,13 @@ func (d itemDelegate) Render(w io.Writer, m list.Model, index int, item list.Ite
 	if !ok {
 		return
 	}
-	line := i.title
 	if index == m.Index() {
-		line = SelectedItemStyle.Render("> " + line)
+		fmt.Fprint(w, SelectedItemStyle.Render("> "+i.title)+"\n")
+		fmt.Fprint(w, SelectedDescStyle.Render("  "+i.desc))
 	} else {
-		line = NormalItemStyle.Render("  " + line)
+		fmt.Fprint(w, NormalItemStyle.Render("  "+i.title)+"\n")
+		fmt.Fprint(w, NormalDescStyle.Render("  "+i.desc))
 	}
-	fmt.Fprint(w, line)
 }
 
 func buildMainMenu() list.Model {
@@ -105,6 +105,7 @@ func (m Model) updateMainMenu(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 func (m Model) mainMenuView() string {
 	title := TitleStyle.Render("LLM Util — 百炼批量查询工具")
+	m.mainMenu.SetHeight(len(m.mainMenu.Items()) * 2)
 	menu := MenuListStyle.Render(m.mainMenu.View())
 	help := HelpStyle.Render("↑/↓ 选择  enter 确认  q 退出")
 	if m.tip != "" {
@@ -142,6 +143,7 @@ func (m Model) updateRulesMenu(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 func (m Model) rulesMenuView() string {
 	title := TitleStyle.Render("规则模式")
+	m.rulesMenu.SetHeight(len(m.rulesMenu.Items()) * 2)
 	menu := MenuListStyle.Render(m.rulesMenu.View())
 	help := HelpStyle.Render("↑/↓ 选择  enter 确认  esc 返回")
 	return lipgloss.JoinVertical(lipgloss.Center, title, menu, help)
