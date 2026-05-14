@@ -39,3 +39,4 @@ files/
 # Worktrees
 .worktrees/
 ~$*
+template-*.xlsx
