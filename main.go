@@ -21,7 +21,7 @@ import (
 	"time"
 
 	"github.com/panjf2000/ants/v2"
-
+	"github.com/joho/godotenv"
 	"github.com/xuri/excelize/v2"
 )
 
@@ -48,6 +48,15 @@ const (
 )
 
 func main() {
+	_ = godotenv.Load()
+
+	if apiKey == "" {
+		apiKey = os.Getenv("LLM_API_KEY")
+	}
+	if appId == "" {
+		appId = os.Getenv("LLM_APP_ID")
+	}
+
 	// 获取API Key
 	if apiKey == "" {
 		fmt.Print("请输入API Key(请妥善保管您的apiKey,请勿泄露给他人): ")
