@@ -18,6 +18,12 @@ const (
 	ENDPOINT_URL = "bailian.cn-beijing.aliyuncs.com"
 )
 
+// 可通过 -ldflags -X 在编译时注入，为空时回退到环境变量
+var (
+	AccessKeyId     string
+	AccessKeySecret string
+)
+
 var Client *bailian20231229.Client
 
 func init() {
@@ -62,11 +68,17 @@ func CreateUploadRequest(filePath string) (req *ApplyFileUploadLeaseRequest, err
 func CreateClient() (result *bailian20231229.Client, err error) {
 	// 工程代码泄露可能会导致 AccessKey 泄露，并威胁账号下所有资源的安全性。以下代码示例仅供参考。
 	// 建议使用更安全的 STS 方式，更多鉴权访问方式请参见：https://help.aliyun.com/document_detail/378661.html。
+	akId := AccessKeyId
+	if akId == "" {
+		akId = os.Getenv("ALIBABA_CLOUD_ACCESS_KEY_ID")
+	}
+	akSecret := AccessKeySecret
+	if akSecret == "" {
+		akSecret = os.Getenv("ALIBABA_CLOUD_ACCESS_KEY_SECRET")
+	}
 	config := &openapi.Config{
-		// 必填，请确保代码运行环境设置了环境变量 ALIBABA_CLOUD_ACCESS_KEY_ID。
-		AccessKeyId: tea.String(os.Getenv("ALIBABA_CLOUD_ACCESS_KEY_ID")),
-		// 必填，请确保代码运行环境设置了环境变量 ALIBABA_CLOUD_ACCESS_KEY_SECRET。
-		AccessKeySecret: tea.String(os.Getenv("ALIBABA_CLOUD_ACCESS_KEY_SECRET")),
+		AccessKeyId:     tea.String(akId),
+		AccessKeySecret: tea.String(akSecret),
 	}
 	// Endpoint 请参考 https://api.aliyun.com/product/bailian
 	config.Endpoint = tea.String(ENDPOINT_URL)
