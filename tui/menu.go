@@ -74,11 +74,11 @@ func (m Model) updateMainMenu(msg tea.Msg) (tea.Model, tea.Cmd) {
 			switch m.mainMenu.Index() {
 			case 0:
 				m.view = ViewChat
-				return m, nil
+				return m, m.chat.Focus()
 			case 1:
 				m.history = nil
 				m.view = ViewChat
-				return m, nil
+				return m, m.chat.Focus()
 			case 2:
 				m.view = ViewRulesMenu
 				return m, nil

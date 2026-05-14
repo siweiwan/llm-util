@@ -52,6 +52,14 @@ func sendChatCmd(fn ChatFunc, prompt string, history []Message) tea.Cmd {
 	}
 }
 
+func (cp *chatPanel) Focus() tea.Cmd {
+	return cp.textarea.Focus()
+}
+
+func (cp *chatPanel) Blur() {
+	cp.textarea.Blur()
+}
+
 func (m Model) updateChat(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
