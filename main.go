@@ -38,10 +38,7 @@ func main() {
 		return a.SendRequest(prompt)
 	}
 	model.OnSendFile = a.SendRequestWithFile
-	model.OnRunCase = func(poolSize int, progress chan<- tui.ProgressMsg) error {
-		a.RunCaseQueryRule(poolSize, progress)
-		return nil
-	}
+	model.OnRunCase = a.RunCaseQueryRule
 	model.OnRunPDF = a.RunPdfBatchQuery
 	model.OnRunDIY = a.RunDIYQueryRule
 	model.OnRunWorkflow = a.RunWorkflowQueryRule

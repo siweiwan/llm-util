@@ -77,16 +77,21 @@ func (m Model) updateBatch(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case tea.KeyMsg:
 			switch msg.String() {
 			case "enter":
-				question := strings.TrimSpace(m.batch.cfgTextarea.Value())
-				if question == "" {
+				input := strings.TrimSpace(m.batch.cfgTextarea.Value())
+				if input == "" {
 					return m, nil
 				}
 				m.batch.configuring = false
 				m.batch.running = true
 				m.batch.ch = make(chan ProgressMsg, 200)
+				view := m.view
 				go func() {
 					defer close(m.batch.ch)
-					_ = m.OnRunPDF(m.batch.poolSize, question, m.batch.ch)
+					if view == ViewRulePDF {
+						_ = m.OnRunPDF(m.batch.poolSize, input, m.batch.ch)
+					} else if view == ViewRuleCase {
+						_ = m.OnRunCase(m.batch.poolSize, input, m.batch.ch)
+					}
 				}()
 				return m, listenProgress(m.batch.ch)
 			case "esc":
@@ -113,7 +118,7 @@ func (m Model) updateBatch(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case batchStartMsg:
 		m.batch.ruleName = ruleName(m.view)
 
-		if m.view == ViewRulePDF {
+		if m.view == ViewRulePDF || m.view == ViewRuleCase {
 			m.batch.configuring = true
 			return m, m.batch.cfgTextarea.Focus()
 		}
@@ -121,8 +126,6 @@ func (m Model) updateBatch(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.batch.running = true
 		var sbf StartBatchFunc
 		switch m.view {
-		case ViewRuleCase:
-			sbf = m.OnRunCase
 		case ViewRuleDIY:
 			sbf = m.OnRunDIY
 		case ViewRuleWorkflow:
@@ -179,7 +182,11 @@ func ruleName(v View) string {
 func (m Model) batchView() string {
 	if m.batch.configuring {
 		title := PanelTitleStyle.Render(m.batch.ruleName)
-		prompt := lipgloss.NewStyle().Foreground(Blue).Render("请输入要提问的问题：")
+		promptText := "请输入要提问的问题："
+		if m.view == ViewRuleCase {
+			promptText = "请拖入或输入 Excel 文件路径："
+		}
+		prompt := lipgloss.NewStyle().Foreground(Blue).Render(promptText)
 		m.batch.cfgTextarea.SetWidth(m.width - 4)
 		help := HelpStyle.Render("enter 确认  esc 返回")
 		return lipgloss.JoinVertical(lipgloss.Left,

@@ -13,7 +13,7 @@ import (
 	"github.com/xuri/excelize/v2"
 )
 
-func (a *App) RunCaseQueryRule(poolSize int, progress chan<- tui.ProgressMsg) {
+func (a *App) RunCaseQueryRule(poolSize int, filename string, progress chan<- tui.ProgressMsg) error {
 	if poolSize <= 0 {
 		poolSize = 10
 	} else if poolSize > 200 {
@@ -26,23 +26,22 @@ func (a *App) RunCaseQueryRule(poolSize int, progress chan<- tui.ProgressMsg) {
 	start := time.Now()
 
 	if progress == nil {
-		fmt.Println("\n📂 正在打开 data.xlsx...")
+		fmt.Println("\n📂 正在打开 " + filename + "...")
 	}
-	file, err := excelize.OpenFile("data.xlsx")
+	file, err := excelize.OpenFile(filename)
 	if err != nil {
-		if progress == nil {
-			console.Colorful(fmt.Sprintf("❌ 打开文件失败: %v", err), constant.Red)
-		}
-		return
+		return fmt.Errorf("打开文件失败: %w", err)
 	}
 	defer file.Close()
 
+	header, _ := file.GetRows("Sheet1")
+	if len(header) == 0 || len(header[0]) < 2 {
+		return fmt.Errorf("模板格式错误：至少需要 request 和 response 两列")
+	}
+
 	rows, err := file.GetRows("Sheet1")
 	if err != nil {
-		if progress == nil {
-			console.Colorful(fmt.Sprintf("❌ 读取行数据失败: %v", err), constant.Red)
-		}
-		return
+		return fmt.Errorf("读取行数据失败: %w", err)
 	}
 	if progress == nil {
 		console.Colorful(fmt.Sprintf("✅ 成功读取 %d 行数据", len(rows)), constant.Green)
@@ -66,13 +65,14 @@ func (a *App) RunCaseQueryRule(poolSize int, progress chan<- tui.ProgressMsg) {
 		}
 
 		question := row[0]
-		if len(row) >= 2 {
-			if row[1] != "" {
-				if progress != nil {
-					progress <- tui.ProgressMsg{Index: i, Total: totalRows, Filename: question, Status: "skip"}
-				}
-				continue
+		if question == "" {
+			continue
+		}
+		if len(row) >= 2 && row[1] != "" {
+			if progress != nil {
+				progress <- tui.ProgressMsg{Index: i, Total: totalRows, Filename: question, Status: "skip"}
 			}
+			continue
 		}
 
 		if progress == nil {
@@ -98,9 +98,11 @@ func (a *App) RunCaseQueryRule(poolSize int, progress chan<- tui.ProgressMsg) {
 				return
 			}
 
+			now := time.Now().Format("2006-01-02 15:04:05")
 			mu.Lock()
 			cacheChat += response
 			file.SetCellValue("Sheet1", fmt.Sprintf("B%d", i+1), response)
+			file.SetCellValue("Sheet1", fmt.Sprintf("D%d", i+1), now)
 			mu.Unlock()
 
 			if progress != nil {
@@ -115,9 +117,7 @@ func (a *App) RunCaseQueryRule(poolSize int, progress chan<- tui.ProgressMsg) {
 		fmt.Println("\n💾 正在保存 Excel 文件...")
 	}
 	if err := file.Save(); err != nil {
-		if progress == nil {
-			console.Colorful(fmt.Sprintf("❌ 保存文件失败: %v", err), constant.Red)
-		}
+		return fmt.Errorf("保存文件失败: %w", err)
 	}
 
 	if progress == nil {
@@ -130,4 +130,5 @@ func (a *App) RunCaseQueryRule(poolSize int, progress chan<- tui.ProgressMsg) {
 			console.Colorful(fmt.Sprintf("⚠️  请求失败数量: %d", errCount), constant.Red)
 		}
 	}
+	return nil
 }
