@@ -1,0 +1,1 @@
+GOOS=windows GOARCH=amd64 go build -ldflags "-s -w" -o dpa_ai_2.7.exe main.go
