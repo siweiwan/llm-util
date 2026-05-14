@@ -221,7 +221,7 @@ func (m Model) batchView() string {
 		case "processing":
 			icon, style = "🔄", InfoStyle
 		case "skip":
-			icon, style = "⏭️", lipgloss.NewStyle().Foreground(Gray)
+			icon, style = "⏭️", lipgloss.NewStyle().Foreground(Dim)
 		}
 		line := fmt.Sprintf("%s [%d] %s", icon, e.idx, e.name)
 		if style.GetForeground() != lipgloss.Color("") {
