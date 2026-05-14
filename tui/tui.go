@@ -125,10 +125,4 @@ func (m Model) batchView() string { return "" }
 func (bp *batchPanel) reset() {}
 func (bp *batchPanel) startCmd() tea.Cmd { return nil }
 
-// Also stub the menu functions that Task 3 will create
-func buildMainMenu() list.Model { return list.Model{} }
-func buildRulesMenu() list.Model { return list.Model{} }
-func (m Model) updateMainMenu(msg tea.Msg) (tea.Model, tea.Cmd) { return m, nil }
-func (m Model) mainMenuView() string { return "" }
-func (m Model) updateRulesMenu(msg tea.Msg) (tea.Model, tea.Cmd) { return m, nil }
-func (m Model) rulesMenuView() string { return "" }
+

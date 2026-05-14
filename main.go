@@ -9,6 +9,7 @@ import (
 	"io"
 	"llm-util/ai/app/impl/bailian"
 	"llm-util/file/qwen"
+	"llm-util/tui"
 	"llm-util/util"
 	"llm-util/util/console"
 	"llm-util/util/file"
@@ -20,6 +21,7 @@ import (
 	"sync"
 	"time"
 
+	tea "github.com/charmbracelet/bubbletea"
 	"github.com/panjf2000/ants/v2"
 	"github.com/joho/godotenv"
 	"github.com/xuri/excelize/v2"
@@ -37,14 +39,14 @@ type Message struct {
 	Content string `json:"content"`
 }
 
-// ANSI 颜色代码
+// ANSI color codes
 const (
 	Reset     = "\033[0m"
 	Blue      = "\033[34m"
 	Green     = "\033[32m"
 	Red       = "\033[31m"
 	Yellow    = "\033[33m"
-	ClearLine = "\033[2K\r" // 清除当前行并回到行首
+	ClearLine = "\033[2K\r"
 )
 
 func main() {
@@ -56,97 +58,47 @@ func main() {
 	if appId == "" {
 		appId = os.Getenv("LLM_APP_ID")
 	}
-
-	// 获取API Key
 	if apiKey == "" {
-		fmt.Print("请输入API Key(请妥善保管您的apiKey,请勿泄露给他人): ")
+		fmt.Print("请输入API Key: ")
 		fmt.Scanln(&apiKey)
 	}
-
 	if appId == "" {
-		fmt.Print(`使用调用文件上传请设置支持文件上传的AppId。
-请输入AppId: `)
+		fmt.Print("请输入AppId: ")
 		fmt.Scanln(&appId)
 	}
 
-	for {
-		fmt.Println("\n" + strings.Repeat("=", 80))
-		console.Colorful("                           主菜单", Yellow)
-		fmt.Println(strings.Repeat("=", 80))
-		fmt.Println("  【1】开始/继续对话 (自由模式)")
-		fmt.Println("  【2】新对话 (自由模式)")
-		fmt.Println("  【3】退出程序")
-		fmt.Println("  【4】规则模式")
-		fmt.Println(strings.Repeat("=", 80))
-		fmt.Print("请输入选项 (1-4): ")
-
-		var choice int
-		_, err := fmt.Scanln(&choice)
-		if err != nil {
-			fmt.Println("❌ 无效输入，请重新选择")
-			continue
+	model := tui.NewModel(apiKey, appId)
+	model.OnSend = func(prompt string, history []tui.Message) (string, error) {
+		conversationHistory = nil
+		for _, m := range history {
+			conversationHistory = append(conversationHistory, Message{Role: m.Role, Content: m.Content})
 		}
-
-		switch choice {
-		case 1:
-			startConversation()
-		case 2:
-			resetConversation()
-			console.Colorful("\n✅ 已开启新对话", Green)
-			startConversation()
-		case 3:
-			console.Colorful("\n👋 再见！感谢使用！", Yellow)
-			return
-		case 4:
-			runRuleMode()
-		default:
-			fmt.Println("❌ 无效选项，请重新选择")
-		}
+		return sendRequest(prompt)
 	}
-}
-
-func startConversation() {
-	reader := bufio.NewReader(os.Stdin)
-
-	for {
-		fmt.Println("\n" + strings.Repeat("-", 80))
-		console.Colorful("💬 请输入您的问题", Blue)
-		fmt.Println("   (输入 'exit' 返回主菜单)")
-		fmt.Println(strings.Repeat("-", 80))
-		fmt.Print("> ")
-		input, _ := reader.ReadString('\n')
-		input = strings.TrimSpace(input)
-
-		if strings.ToLower(input) == "exit" {
-			console.Colorful("\n⬅️  返回主菜单", Yellow)
-			return
-		}
-
-		// 添加用户消息到历史
-		conversationHistory = append(conversationHistory, Message{
-			Role:    "user",
-			Content: input,
-		})
-
-		// 发送请求并获取响应
-		response, err := sendRequest(input)
-		if err != nil {
-			console.Colorful(fmt.Sprintf("\n❌ 请求失败: %v", err), Red)
-			continue
-		}
-
-		// 添加助手响应到历史
-		conversationHistory = append(conversationHistory, Message{
-			Role:    "assistant",
-			Content: response,
-		})
-
-		printResp(response)
+	model.OnSendFile = func(prompt, filePath string) (string, error) {
+		return sendRequestWithFile(prompt, filePath)
 	}
-}
+	model.OnRunCase = func(poolSize int, progress chan<- tui.ProgressMsg) error {
+		runCaseQueryRule()
+		return nil
+	}
+	model.OnRunPDF = func(poolSize int, progress chan<- tui.ProgressMsg) error {
+		runPdfBatchQuery()
+		return nil
+	}
+	model.OnRunDIY = func(poolSize int, progress chan<- tui.ProgressMsg) error {
+		runDIYQueryRule()
+		return nil
+	}
+	model.OnRunWorkflow = func(poolSize int, progress chan<- tui.ProgressMsg) error {
+		runWorkflowQueryRule()
+		return nil
+	}
 
-func resetConversation() {
-	conversationHistory = []Message{}
+	if _, err := tea.NewProgram(model, tea.WithAltScreen()).Run(); err != nil {
+		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+		os.Exit(1)
+	}
 }
 
 func sendRequest(prompt string) (string, error) {
@@ -279,68 +231,6 @@ func sendRequestWithFile(prompt, filePath string) (string, error) {
 	}
 
 	return response.Output.Text, nil
-}
-
-func runRuleMode() {
-	// 	fmt.Println(`1. 规则1【案例查询】
-	// - 请在A列写入提问，B列为AI回复。（第一行请留给标题）
-	// - C1为二次提问，为空采取默认提问:
-	// 请根据提供内容，对“服务国家和地区重大战略需求、学科优势和特色、学科点的不可替代性”三个主题，每个主题总结10个切入点，并且对每个切入点进行举例。以表格输出给我，字段包括：主题、切入点、案例
-	// - C2为AI回复。`)
-
-	console.Colorful("1. 规则1【案例查询】", Red)
-	fmt.Println(`- 请在当前目录 data.xlsx A列写入提问，B列为AI回复。（第一行请留给标题）`)
-
-	console.Colorful("2. 规则2【PDF批量提问】", Red)
-	fmt.Println(`- 请在当前目录下新建 pdfs 文件夹并放至需要提问的 PDF 文件。
-- 会自动将回答输出至当前目录下的 {提问前20个字}.xlsx 文件。
-- B列的 md5 值用于跳过已处理过的文件。`)
-
-	console.Colorful("3. 规则3【DIY提问】", Red)
-	fmt.Println(`(用于处理 n×m 的提问规模，n 为问题数，m 为文件数)
-- 请在当前目录下新建 files 文件夹并放至需要提问的文件。
-- process.xlsx 为处理模板，首行标题不处理
-eg:
-  A              B             C
-1 [ 问题  ]  [   文件   ]   [  回答   ]
-2 [ 问题1 ]  [ 1.pdf   ]   [ answer1 ]
-3 [ 问题2 ]  [ 2.word  ]   [ answer2 ]
-4 [ 问题3 ]  [ 3.excel ]   [ answer3 ]`)
-
-	console.Colorful("4. 规则4【工作流调用】", Red)
-	fmt.Println(`- workflow.xlsx 为处理模板，首行标题不处理
-- 第一列为问题，第二列输出回答，表头决定了参数
-eg:
-  A              B             C
-1 [ question ]  [ answer ]  [ url ]    [ name ]
-2 [ 请给出回答 ]  [ 歪比巴卜 ]  [ .com ]  [ 名字 ]`)
-
-	fmt.Println("请选择规则模式：")
-
-	var ruleChoice int
-	fmt.Print("> ")
-	_, err := fmt.Scanln(&ruleChoice)
-	if err != nil {
-		fmt.Println("无效输入，请重新选择")
-		return
-	}
-
-	switch ruleChoice {
-	case 1:
-		console.Colorful("\n▶️  开始执行：规则1 - 案例查询", Green)
-		runCaseQueryRule()
-	case 2:
-		console.Colorful("\n▶️  开始执行：规则2 - PDF批量提问", Green)
-		runPdfBatchQuery()
-	case 3:
-		console.Colorful("\n▶️  开始执行：规则3 - DIY提问", Green)
-		runDIYQueryRule()
-	case 4:
-		console.Colorful("\n▶️  开始执行：规则4 - 工作流调用", Green)
-		runWorkflowQueryRule()
-	default:
-		fmt.Println("❌ 无效选项，请重新选择")
-	}
 }
 
 func runCaseQueryRule() {
@@ -716,15 +606,6 @@ func runDIYQueryRule() {
 			mu.Unlock()
 		})
 	}
-}
-
-func printResp(resp string, colors ...string) {
-	color := Green
-	if len(colors) > 0 {
-		color = colors[0]
-	}
-	fmt.Println("\n🧑‍💻 " + color + "助手回复:" + Reset)
-	fmt.Println(color + resp + Reset)
 }
 
 func printQuestion(question string, colors ...string) {
