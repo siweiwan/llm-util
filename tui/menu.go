@@ -105,7 +105,6 @@ func (m Model) updateMainMenu(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 func (m Model) mainMenuView() string {
 	title := TitleStyle.Render("LLM Util — 百炼批量查询工具")
-	m.mainMenu.SetHeight(len(m.mainMenu.Items()) * 2)
 	menu := MenuListStyle.Render(m.mainMenu.View())
 	help := HelpStyle.Render("↑/↓ 选择  enter 确认  q 退出")
 	if m.tip != "" {

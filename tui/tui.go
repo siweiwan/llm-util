@@ -87,6 +87,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
 		m.height = msg.Height
+		m.mainMenu.SetSize(msg.Width-4, len(m.mainMenu.Items())*2)
+		m.rulesMenu.SetSize(msg.Width-4, len(m.rulesMenu.Items())*2)
 		return m, nil
 	case tea.KeyMsg:
 		m.tip = ""
