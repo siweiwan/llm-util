@@ -12,6 +12,7 @@ const (
 	ViewSettings
 	ViewChat
 	ViewRulesMenu
+	ViewRuleDetail
 	ViewRuleCase
 	ViewRulePDF
 	ViewRuleDIY
@@ -58,9 +59,10 @@ type Model struct {
 
 	OnSaveSettings func(apiKey, appId string) error
 
-	settings settingsPanel
-	chat     chatPanel
-	batch    batchPanel
+	settings   settingsPanel
+	chat       chatPanel
+	batch      batchPanel
+	ruleDetail ruleDetailPanel
 
 	tip    string
 	width  int
@@ -74,9 +76,10 @@ func NewModel(apiKey, appId string) Model {
 		appId:     appId,
 		mainMenu:  buildMainMenu(),
 		rulesMenu: buildRulesMenu(),
-		settings:  newSettingsPanel(apiKey, appId),
-		chat:      newChatPanel(),
-		batch:     newBatchPanel(),
+		settings:   newSettingsPanel(apiKey, appId),
+		chat:       newChatPanel(),
+		batch:      newBatchPanel(),
+		ruleDetail: newRuleDetailPanel(),
 	}
 }
 
@@ -106,6 +109,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m.updateSettings(msg)
 	case ViewRulesMenu:
 		return m.updateRulesMenu(msg)
+	case ViewRuleDetail:
+		return m.updateRuleDetail(msg)
 	case ViewChat:
 		return m.updateChat(msg)
 	case ViewRuleCase, ViewRulePDF, ViewRuleDIY, ViewRuleWorkflow:
@@ -122,6 +127,8 @@ func (m Model) View() string {
 		return m.settingsView()
 	case ViewRulesMenu:
 		return m.rulesMenuView()
+	case ViewRuleDetail:
+		return m.ruleDetailView()
 	case ViewChat:
 		return m.chatView()
 	case ViewRuleCase, ViewRulePDF, ViewRuleDIY, ViewRuleWorkflow:

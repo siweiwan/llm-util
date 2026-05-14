@@ -129,18 +129,20 @@ func (m Model) updateRulesMenu(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.view = ViewMainMenu
 			return m, nil
 		case "enter":
+			var target View
 			switch m.rulesMenu.Index() {
 			case 0:
-				m.view = ViewRuleCase
+				target = ViewRuleCase
 			case 1:
-				m.view = ViewRulePDF
+				target = ViewRulePDF
 			case 2:
-				m.view = ViewRuleDIY
+				target = ViewRuleDIY
 			case 3:
-				m.view = ViewRuleWorkflow
+				target = ViewRuleWorkflow
 			}
-			m.batch.reset()
-			return m, m.batch.startCmd()
+			m.ruleDetail.reset(target)
+			m.view = ViewRuleDetail
+			return m, nil
 		}
 	}
 	var cmd tea.Cmd
