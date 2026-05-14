@@ -35,3 +35,6 @@ Thumbs.db
 # Large test data
 pdfs/
 files/
+
+# Worktrees
+.worktrees/
