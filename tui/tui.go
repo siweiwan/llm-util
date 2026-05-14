@@ -113,11 +113,6 @@ func (m Model) View() string {
 }
 
 // Temporary stubs — replaced in Phase 2/3
-type chatPanel struct{}
-func newChatPanel() chatPanel { return chatPanel{} }
-func (m Model) updateChat(msg tea.Msg) (tea.Model, tea.Cmd) { return m, nil }
-func (m Model) chatView() string { return "" }
-
 type batchPanel struct{}
 func newBatchPanel() batchPanel { return batchPanel{} }
 func (m Model) updateBatch(msg tea.Msg) (tea.Model, tea.Cmd) { return m, nil }
