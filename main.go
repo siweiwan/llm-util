@@ -30,8 +30,6 @@ import (
 var apiKey = ""
 var appId = ""
 
-// var appId = "1f03bff2a0f74eae9e1b553f980cfdd6"
-
 var conversationHistory []Message
 
 type Message struct {
@@ -200,12 +198,7 @@ func sendRequestWithFile(prompt, filePath string) (string, error) {
 
 	client := &http.Client{}
 
-	// 创建一个通道用于终止 loading 动画
-	// done := make(chan struct{})
-	// go showLoading(done)
-
 	resp, err := client.Do(req)
-	// close(done)
 	if err != nil {
 		return "", fmt.Errorf("请求发送失败: %w", err)
 	}
@@ -312,7 +305,7 @@ func runCaseQueryRule() {
 				return
 			}
 
-			// 将结果写入到 Excel 的第四列
+			// 将结果写入到 Excel 的第二列
 			mu.Lock()
 			// 添加助手响应到历史
 			cacheChat += response
@@ -432,16 +425,6 @@ func runPdfBatchQuery() {
 			console.Colorful(fmt.Sprintf("❌ 关闭Excel文件失败: %v", err), Red)
 		}
 	}()
-
-	// 设置首行为问题
-	f.SetCellValue("Sheet1", "A1", input)
-
-	// 设置第二行标题
-	headers := []string{"文件名", "MD5", "回答内容"}
-	for col, header := range headers {
-		cell, _ := excelize.CoordinatesToCellName(col+1, 2)
-		f.SetCellValue("Sheet1", cell, header)
-	}
 
 	var pendingFiles []string
 	for _, filePath := range files {

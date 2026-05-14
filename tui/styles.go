@@ -25,3 +25,9 @@ var (
 )
 
 var PanelTitleStyle = lipgloss.NewStyle().Bold(true).Foreground(White).Background(Purple).Padding(0, 1)
+
+var (
+	SelectedItemStyle = lipgloss.NewStyle().Foreground(White).Background(Purple).Padding(0, 1)
+	NormalItemStyle   = lipgloss.NewStyle().Padding(0, 1)
+	MenuListStyle     = lipgloss.NewStyle().Padding(1)
+)

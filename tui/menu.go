@@ -27,9 +27,9 @@ func (d itemDelegate) Render(w io.Writer, m list.Model, index int, item list.Ite
 	}
 	line := i.title
 	if index == m.Index() {
-		line = lipgloss.NewStyle().Foreground(White).Background(Purple).Padding(0, 1).Render("> " + line)
+		line = SelectedItemStyle.Render("> " + line)
 	} else {
-		line = lipgloss.NewStyle().Padding(0, 1).Render("  " + line)
+		line = NormalItemStyle.Render("  " + line)
 	}
 	fmt.Fprint(w, line)
 }
@@ -94,7 +94,7 @@ func (m Model) updateMainMenu(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 func (m Model) mainMenuView() string {
 	title := TitleStyle.Render("LLM Util — 百炼批量查询工具")
-	menu := lipgloss.NewStyle().Padding(1).Render(m.mainMenu.View())
+	menu := MenuListStyle.Render(m.mainMenu.View())
 	help := HelpStyle.Render("↑/↓ 选择  enter 确认  q 退出")
 	return lipgloss.JoinVertical(lipgloss.Center, title, menu, help)
 }
@@ -128,7 +128,7 @@ func (m Model) updateRulesMenu(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 func (m Model) rulesMenuView() string {
 	title := TitleStyle.Render("规则模式")
-	menu := lipgloss.NewStyle().Padding(1).Render(m.rulesMenu.View())
+	menu := MenuListStyle.Render(m.rulesMenu.View())
 	help := HelpStyle.Render("↑/↓ 选择  enter 确认  esc 返回")
 	return lipgloss.JoinVertical(lipgloss.Center, title, menu, help)
 }
