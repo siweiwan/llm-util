@@ -112,12 +112,5 @@ func (m Model) View() string {
 	return ""
 }
 
-// Temporary stubs — replaced in Phase 2/3
-type batchPanel struct{}
-func newBatchPanel() batchPanel { return batchPanel{} }
-func (m Model) updateBatch(msg tea.Msg) (tea.Model, tea.Cmd) { return m, nil }
-func (m Model) batchView() string { return "" }
-func (bp *batchPanel) reset() {}
-func (bp *batchPanel) startCmd() tea.Cmd { return nil }
 
 
