@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"llm-util/ai/app/impl/bailian"
+	"llm-util/constant"
 	"llm-util/file/qwen"
 	"llm-util/tui"
 	"llm-util/util"
@@ -34,16 +35,6 @@ type Message struct {
 	Role    string `json:"role"`
 	Content string `json:"content"`
 }
-
-// ANSI color codes
-const (
-	Reset     = "\033[0m"
-	Blue      = "\033[34m"
-	Green     = "\033[32m"
-	Red       = "\033[31m"
-	Yellow    = "\033[33m"
-	ClearLine = "\033[2K\r"
-)
 
 func main() {
 	_ = godotenv.Load()
@@ -228,7 +219,7 @@ func runCaseQueryRule(poolSize int, progress chan<- tui.ProgressMsg) {
 		poolSize = 200
 	}
 	if progress == nil {
-		console.Colorful(fmt.Sprintf("✅ 并发规模已设置为: %d", poolSize), Green)
+		console.Colorful(fmt.Sprintf("✅ 并发规模已设置为: %d", poolSize), constant.Green)
 	}
 
 	start := time.Now()
@@ -240,7 +231,7 @@ func runCaseQueryRule(poolSize int, progress chan<- tui.ProgressMsg) {
 	file, err := excelize.OpenFile("data.xlsx")
 	if err != nil {
 		if progress == nil {
-			console.Colorful(fmt.Sprintf("❌ 打开文件失败: %v", err), Red)
+			console.Colorful(fmt.Sprintf("❌ 打开文件失败: %v", err), constant.Red)
 		}
 		return
 	}
@@ -250,12 +241,12 @@ func runCaseQueryRule(poolSize int, progress chan<- tui.ProgressMsg) {
 	rows, err := file.GetRows("Sheet1")
 	if err != nil {
 		if progress == nil {
-			console.Colorful(fmt.Sprintf("❌ 读取行数据失败: %v", err), Red)
+			console.Colorful(fmt.Sprintf("❌ 读取行数据失败: %v", err), constant.Red)
 		}
 		return
 	}
 	if progress == nil {
-		console.Colorful(fmt.Sprintf("✅ 成功读取 %d 行数据", len(rows)), Green)
+		console.Colorful(fmt.Sprintf("✅ 成功读取 %d 行数据", len(rows)), constant.Green)
 	}
 
 	var wg sync.WaitGroup
@@ -327,18 +318,18 @@ func runCaseQueryRule(poolSize int, progress chan<- tui.ProgressMsg) {
 	}
 	if err := file.Save(); err != nil {
 		if progress == nil {
-			console.Colorful(fmt.Sprintf("❌ 保存文件失败: %v", err), Red)
+			console.Colorful(fmt.Sprintf("❌ 保存文件失败: %v", err), constant.Red)
 		}
 	}
 
 	if progress == nil {
 		fmt.Println("\n" + strings.Repeat("=", 80))
-		console.Colorful(fmt.Sprintf("✅ 规则模式【案例查询】处理完毕！耗时: %v", time.Since(start)), Yellow)
+		console.Colorful(fmt.Sprintf("✅ 规则模式【案例查询】处理完毕！耗时: %v", time.Since(start)), constant.Yellow)
 		fmt.Println(strings.Repeat("=", 80))
 		if errCount == 0 {
-			console.Colorful("🎉🎉🎉 所有请求成功完成！", Green)
+			console.Colorful("🎉🎉🎉 所有请求成功完成！", constant.Green)
 		} else {
-			console.Colorful(fmt.Sprintf("⚠️  请求失败数量: %d", errCount), Red)
+			console.Colorful(fmt.Sprintf("⚠️  请求失败数量: %d", errCount), constant.Red)
 		}
 	}
 }
@@ -351,7 +342,7 @@ func runPdfBatchQuery(poolSize int, question string, progress chan<- tui.Progres
 		poolSize = 200
 	}
 	if progress == nil {
-		console.Colorful(fmt.Sprintf("✅ 并发规模已设置为: %d", poolSize), Green)
+		console.Colorful(fmt.Sprintf("✅ 并发规模已设置为: %d", poolSize), constant.Green)
 	}
 
 	if progress == nil {
@@ -366,7 +357,7 @@ func runPdfBatchQuery(poolSize int, question string, progress chan<- tui.Progres
 		return fmt.Errorf("读取文件失败: %w", err)
 	}
 	if progress == nil {
-		console.Colorful(fmt.Sprintf("✅ 在 pdfs 目录下检索到 %d 个 PDF 文件", len(files)), Green)
+		console.Colorful(fmt.Sprintf("✅ 在 pdfs 目录下检索到 %d 个 PDF 文件", len(files)), constant.Green)
 	}
 
 	input := question
@@ -387,7 +378,7 @@ func runPdfBatchQuery(poolSize int, question string, progress chan<- tui.Progres
 			if existingQuestion == input {
 				f = existingFile
 				if progress == nil {
-					console.Colorful("📋 检测到未完成的进度文件，将继续处理...", Yellow)
+					console.Colorful("📋 检测到未完成的进度文件，将继续处理...", constant.Yellow)
 				}
 
 				// 读取已处理的MD5
@@ -403,7 +394,7 @@ func runPdfBatchQuery(poolSize int, question string, progress chan<- tui.Progres
 				currentRow = len(rows) + 1
 			} else {
 				if progress == nil {
-					console.Colorful("⚠️  检测到同名文件但问题不同，将创建新文件", Yellow)
+					console.Colorful("⚠️  检测到同名文件但问题不同，将创建新文件", constant.Yellow)
 				}
 				filename = util.GetFirstXChars(input, 20) + "_new" + ".xlsx"
 			}
@@ -426,14 +417,14 @@ func runPdfBatchQuery(poolSize int, question string, progress chan<- tui.Progres
 	defer func() {
 		if err := f.SaveAs(filename); err != nil {
 			if progress == nil {
-				console.Colorful(fmt.Sprintf("❌ 保存Excel文件失败: %v", err), Red)
+				console.Colorful(fmt.Sprintf("❌ 保存Excel文件失败: %v", err), constant.Red)
 			}
 		} else if progress == nil {
-			console.Colorful(fmt.Sprintf("\n✅ 所有结果已保存至: %s", filename), Green)
+			console.Colorful(fmt.Sprintf("\n✅ 所有结果已保存至: %s", filename), constant.Green)
 		}
 		if err := f.Close(); err != nil {
 			if progress == nil {
-				console.Colorful(fmt.Sprintf("❌ 关闭Excel文件失败: %v", err), Red)
+				console.Colorful(fmt.Sprintf("❌ 关闭Excel文件失败: %v", err), constant.Red)
 			}
 		}
 	}()
@@ -443,7 +434,7 @@ func runPdfBatchQuery(poolSize int, question string, progress chan<- tui.Progres
 		md5, err := file.CalculateMD5(filePath)
 		if err == nil && processedMD5[md5] {
 			if progress == nil {
-				console.Colorful(fmt.Sprintf("⏭️  跳过已处理文件: %s", fpath.Base(filePath)), Yellow)
+				console.Colorful(fmt.Sprintf("⏭️  跳过已处理文件: %s", fpath.Base(filePath)), constant.Yellow)
 			}
 			continue
 		}
@@ -452,7 +443,7 @@ func runPdfBatchQuery(poolSize int, question string, progress chan<- tui.Progres
 
 	if progress == nil {
 		fmt.Println("\n" + strings.Repeat("-", 80))
-		console.Colorful(fmt.Sprintf("📊 需要新处理的文件数量/总文件数量: %d/%d", len(pendingFiles), len(files)), Blue)
+		console.Colorful(fmt.Sprintf("📊 需要新处理的文件数量/总文件数量: %d/%d", len(pendingFiles), len(files)), constant.Blue)
 		fmt.Println(strings.Repeat("-", 80))
 	}
 
@@ -477,7 +468,7 @@ func runPdfBatchQuery(poolSize int, question string, progress chan<- tui.Progres
 			defer wg.Done()
 
 			if progress == nil {
-				console.Colorful(fmt.Sprintf("\n🔄 [%d/%d] 正在处理: %s", i+1, len(pendingFiles), fpath.Base(filePath)), Blue)
+				console.Colorful(fmt.Sprintf("\n🔄 [%d/%d] 正在处理: %s", i+1, len(pendingFiles), fpath.Base(filePath)), constant.Blue)
 			}
 
 			answer, err := sendRequestWithFile(input, filePath)
@@ -485,13 +476,13 @@ func runPdfBatchQuery(poolSize int, question string, progress chan<- tui.Progres
 				if progress != nil {
 					progress <- tui.ProgressMsg{Index: i, Total: totalFiles, Filename: fpath.Base(filePath), Status: "error"}
 				} else {
-					console.Colorful(fmt.Sprintf("❌ 文件[%s] 请求失败: %v", fpath.Base(filePath), err), Red)
+					console.Colorful(fmt.Sprintf("❌ 文件[%s] 请求失败: %v", fpath.Base(filePath), err), constant.Red)
 				}
 				return
 			}
 			if progress == nil {
-				console.Colorful(fmt.Sprintf("✅ [%d/%d] %s 处理完成", i+1, len(pendingFiles), fpath.Base(filePath)), Green)
-				fmt.Printf(Green+"\n📄 %s 回答内容:\n%s\n"+Reset, fpath.Base(filePath), answer)
+				console.Colorful(fmt.Sprintf("✅ [%d/%d] %s 处理完成", i+1, len(pendingFiles), fpath.Base(filePath)), constant.Green)
+				fmt.Printf(constant.Green+"\n📄 %s 回答内容:\n%s\n"+constant.Reset, fpath.Base(filePath), answer)
 			}
 
 			// 写入Excel数据
@@ -505,7 +496,7 @@ func runPdfBatchQuery(poolSize int, question string, progress chan<- tui.Progres
 				cell, _ := excelize.CoordinatesToCellName(col+1, currentRow)
 				if err := f.SetCellValue("Sheet1", cell, value); err != nil {
 					if progress == nil {
-						console.Colorful(fmt.Sprintf("⚠️  写入数据到%s失败: %v", cell, err), Yellow)
+						console.Colorful(fmt.Sprintf("⚠️  写入数据到%s失败: %v", cell, err), constant.Yellow)
 					}
 				}
 			}
@@ -515,7 +506,7 @@ func runPdfBatchQuery(poolSize int, question string, progress chan<- tui.Progres
 			// 实时保存进度
 			if err := f.SaveAs(filename); err != nil {
 				if progress == nil {
-					console.Colorful(fmt.Sprintf("⚠️  临时保存失败: %v", err), Yellow)
+					console.Colorful(fmt.Sprintf("⚠️  临时保存失败: %v", err), constant.Yellow)
 				}
 			}
 			mu.Unlock()
@@ -536,7 +527,7 @@ func runDIYQueryRule(poolSize int, progress chan<- tui.ProgressMsg) error {
 		poolSize = 200
 	}
 	if progress == nil {
-		console.Colorful(fmt.Sprintf("✅ 并发规模已设置为: %d", poolSize), Green)
+		console.Colorful(fmt.Sprintf("✅ 并发规模已设置为: %d", poolSize), constant.Green)
 	}
 
 	if progress == nil {
@@ -551,7 +542,7 @@ func runDIYQueryRule(poolSize int, progress chan<- tui.ProgressMsg) error {
 		return fmt.Errorf("读取文件失败: %w", err)
 	}
 	if progress == nil {
-		console.Colorful(fmt.Sprintf("✅ 在 files 目录下检索到 %d 个文件", len(files)), Green)
+		console.Colorful(fmt.Sprintf("✅ 在 files 目录下检索到 %d 个文件", len(files)), constant.Green)
 	}
 
 	// 读取Excel文件
@@ -570,7 +561,7 @@ func runDIYQueryRule(poolSize int, progress chan<- tui.ProgressMsg) error {
 		return fmt.Errorf("读取行数据失败: %w", err)
 	}
 	if progress == nil {
-		console.Colorful(fmt.Sprintf("✅ 成功读取 %d 行数据", len(rows)), Green)
+		console.Colorful(fmt.Sprintf("✅ 成功读取 %d 行数据", len(rows)), constant.Green)
 	}
 
 	var wg sync.WaitGroup
@@ -617,8 +608,8 @@ func runDIYQueryRule(poolSize int, progress chan<- tui.ProgressMsg) error {
 			defer wg.Done()
 
 			if progress == nil {
-				console.Colorful(fmt.Sprintf("\n🔄 正在处理 %s", fileName), Blue)
-				console.Colorful(fmt.Sprintf("   问题: %s", input), Blue)
+				console.Colorful(fmt.Sprintf("\n🔄 正在处理 %s", fileName), constant.Blue)
+				console.Colorful(fmt.Sprintf("   问题: %s", input), constant.Blue)
 			}
 
 			answer, err := sendRequestWithFile(input, filePath)
@@ -626,13 +617,13 @@ func runDIYQueryRule(poolSize int, progress chan<- tui.ProgressMsg) error {
 				if progress != nil {
 					progress <- tui.ProgressMsg{Index: i, Total: totalRows, Filename: fileName, Status: "error"}
 				} else {
-					console.Colorful(fmt.Sprintf("❌ 文件[%s] 请求失败: %v", fileName, err), Red)
+					console.Colorful(fmt.Sprintf("❌ 文件[%s] 请求失败: %v", fileName, err), constant.Red)
 				}
 				return
 			}
 			if progress == nil {
-				console.Colorful(fmt.Sprintf("✅ %s 处理完成", fileName), Green)
-				fmt.Printf(Green+"\n📄 %s 回答内容:\n%s\n"+Reset, fileName, answer)
+				console.Colorful(fmt.Sprintf("✅ %s 处理完成", fileName), constant.Green)
+				fmt.Printf(constant.Green+"\n📄 %s 回答内容:\n%s\n"+constant.Reset, fileName, answer)
 			}
 
 			// 写入Excel数据
@@ -651,11 +642,11 @@ func runDIYQueryRule(poolSize int, progress chan<- tui.ProgressMsg) error {
 }
 
 func printQuestion(question string, colors ...string) {
-	color := Blue
+	color := constant.Blue
 	if len(colors) > 0 {
 		color = colors[0]
 	}
-	fmt.Println(color + question + Reset)
+	fmt.Println(color + question + constant.Reset)
 }
 
 // 显示动态 Loading 动画
@@ -668,8 +659,8 @@ func showLoading(done chan struct{}) {
 		case <-done:
 			return
 		default:
-			// fmt.Printf("\r"+Yellow+"正在处理中 %s"+Reset, frames[i%len(frames)])
-			fmt.Printf("\r"+Yellow+"%s"+Reset, frames[i%len(frames)])
+			// fmt.Printf("\r"+constant.Yellow+"正在处理中 %s"+constant.Reset, frames[i%len(frames)])
+			fmt.Printf("\r"+constant.Yellow+"%s"+constant.Reset, frames[i%len(frames)])
 			i++
 			time.Sleep(80 * time.Millisecond) // 控制旋转速度
 		}
@@ -683,7 +674,7 @@ func runWorkflowQueryRule(poolSize int, progress chan<- tui.ProgressMsg) error {
 		poolSize = 200
 	}
 	if progress == nil {
-		console.Colorful(fmt.Sprintf("✅ 并发规模已设置为: %d", poolSize), Green)
+		console.Colorful(fmt.Sprintf("✅ 并发规模已设置为: %d", poolSize), constant.Green)
 	}
 
 	start := time.Now()
@@ -707,7 +698,7 @@ func runWorkflowQueryRule(poolSize int, progress chan<- tui.ProgressMsg) error {
 		return fmt.Errorf("Excel中没有数据")
 	}
 	if progress == nil {
-		console.Colorful(fmt.Sprintf("✅ 成功读取 %d 行数据", len(rows)), Green)
+		console.Colorful(fmt.Sprintf("✅ 成功读取 %d 行数据", len(rows)), constant.Green)
 	}
 
 	head := rows[0] // 第一行作为表头
@@ -772,7 +763,7 @@ func runWorkflowQueryRule(poolSize int, progress chan<- tui.ProgressMsg) error {
 				if progress != nil {
 					progress <- tui.ProgressMsg{Index: iCopy, Total: totalRows, Filename: question, Status: "error"}
 				} else {
-					console.Colorful(fmt.Sprintf("❌ 请求失败: %v", err), Red)
+					console.Colorful(fmt.Sprintf("❌ 请求失败: %v", err), constant.Red)
 				}
 				mu.Lock()
 				errCount++
@@ -781,7 +772,7 @@ func runWorkflowQueryRule(poolSize int, progress chan<- tui.ProgressMsg) error {
 			}
 
 			if progress == nil {
-				console.Colorful(fmt.Sprintf("✅ 问题 [%d] 处理完成", iCopy+1), Green)
+				console.Colorful(fmt.Sprintf("✅ 问题 [%d] 处理完成", iCopy+1), constant.Green)
 			}
 
 			// 将结果写入到 Excel 的第二列
@@ -803,18 +794,18 @@ func runWorkflowQueryRule(poolSize int, progress chan<- tui.ProgressMsg) error {
 	}
 	if err := file.Save(); err != nil {
 		if progress == nil {
-			console.Colorful(fmt.Sprintf("❌ 保存文件失败: %v", err), Red)
+			console.Colorful(fmt.Sprintf("❌ 保存文件失败: %v", err), constant.Red)
 		}
 	}
 
 	if progress == nil {
 		fmt.Println("\n" + strings.Repeat("=", 80))
-		console.Colorful(fmt.Sprintf("✅ 规则模式【工作流】处理完毕！耗时: %v", time.Since(start)), Yellow)
+		console.Colorful(fmt.Sprintf("✅ 规则模式【工作流】处理完毕！耗时: %v", time.Since(start)), constant.Yellow)
 		fmt.Println(strings.Repeat("=", 80))
 		if errCount == 0 {
-			console.Colorful("🎉🎉🎉 所有请求成功完成！", Green)
+			console.Colorful("🎉🎉🎉 所有请求成功完成！", constant.Green)
 		} else {
-			console.Colorful(fmt.Sprintf("⚠️  请求失败数量: %d", errCount), Red)
+			console.Colorful(fmt.Sprintf("⚠️  请求失败数量: %d", errCount), constant.Red)
 		}
 	}
 	return nil
