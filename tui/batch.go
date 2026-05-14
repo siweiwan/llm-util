@@ -93,8 +93,8 @@ func (m Model) updateBatch(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		m.batch.ch = make(chan ProgressMsg, 200)
 		go func() {
+			defer close(m.batch.ch)
 			_ = sbf(m.batch.poolSize, m.batch.ch)
-			close(m.batch.ch)
 		}()
 		return m, listenProgress(m.batch.ch)
 
