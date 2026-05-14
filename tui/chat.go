@@ -115,16 +115,21 @@ func (m Model) updateChat(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return m, nil
 }
 
+var (
+	bulletStyle   = lipgloss.NewStyle().Foreground(Accent).Bold(true)
+	respBarStyle  = lipgloss.NewStyle().Foreground(Accent)
+	respTextStyle = lipgloss.NewStyle().Padding(0, 0, 0, 2)
+)
+
 func (m *Model) updateChatContent() {
 	var sb strings.Builder
 	for _, msg := range m.history {
 		switch msg.Role {
 		case "user":
-			sb.WriteString(lipgloss.NewStyle().Foreground(Blue).Bold(true).Render("🧑 您") + "\n")
+			sb.WriteString(bulletStyle.Render("●") + " " + msg.Content + "\n")
 		case "assistant":
-			sb.WriteString(lipgloss.NewStyle().Foreground(Green).Bold(true).Render("🤖 助手") + "\n")
+			sb.WriteString(respBarStyle.Render("│") + respTextStyle.Render(msg.Content) + "\n")
 		}
-		sb.WriteString(msg.Content + "\n\n")
 	}
 	m.chat.viewport.SetContent(sb.String())
 	m.chat.viewport.GotoBottom()
@@ -133,13 +138,13 @@ func (m *Model) updateChatContent() {
 func (m Model) chatView() string {
 	help := "esc 返回  Ctrl+N 新对话  Enter 发送"
 	if m.chat.loading {
-		help = m.chat.spinner.View() + " 请求中..."
+		help = m.chat.spinner.View() + " 正在生成..."
 	}
 	if m.chat.err != nil {
-		help += "\n" + ErrorStyle.Render(fmt.Sprintf("❌ %v", m.chat.err))
+		help += "\n" + ErrorStyle.Render(fmt.Sprintf("✗ %v", m.chat.err))
 	}
 
-	title := PanelTitleStyle.Render("对话 — 自由模式")
+	title := PanelTitleStyle.Render("对话")
 	vpHeight := m.height - 10
 	if vpHeight < 5 {
 		vpHeight = 5
