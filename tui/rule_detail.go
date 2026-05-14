@@ -249,10 +249,11 @@ func generateTemplate(letter string) (string, error) {
 		Fill:      excelize.Fill{Type: "pattern", Color: []string{"#06B6D4"}, Pattern: 1},
 		Alignment: &excelize.Alignment{Horizontal: "center"},
 	})
-	f.SetSheetRow("Sheet1", "A1", &[]string{"request", "response", "time"})
-	f.SetCellStyle("Sheet1", "A1", "C1", headerStyle)
+	f.SetSheetRow("Sheet1", "A1", &[]string{"request", "response", "status", "time"})
+	f.SetCellStyle("Sheet1", "A1", "D1", headerStyle)
 	f.SetColWidth("Sheet1", "A", "B", 40)
-	f.SetColWidth("Sheet1", "C", "C", 20)
+	f.SetColWidth("Sheet1", "C", "C", 12)
+	f.SetColWidth("Sheet1", "D", "D", 20)
 	f.SetPanes("Sheet1", &excelize.Panes{
 		Freeze:      true,
 		YSplit:      1,
