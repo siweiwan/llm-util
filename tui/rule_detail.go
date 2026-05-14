@@ -1,6 +1,9 @@
 package tui
 
 import (
+	"fmt"
+	"time"
+
 	"github.com/charmbracelet/bubbles/list"
 	"github.com/charmbracelet/bubbles/viewport"
 	"github.com/charmbracelet/glamour"
@@ -88,13 +91,14 @@ const (
 )
 
 type ruleDetailPanel struct {
-	view        ruleDetailView
-	menu        list.Model
-	helpVP      viewport.Model
-	ruleName    string
+	view         ruleDetailView
+	menu         list.Model
+	helpVP       viewport.Model
+	ruleName     string
 	selectedRule View
-	markdown    string
-	saved       bool
+	markdown     string
+	saved        bool
+	templateMsg  string
 }
 
 func newRuleDetailPanel() ruleDetailPanel {
@@ -140,18 +144,18 @@ func (p *ruleDetailPanel) reset(rule View) {
 	}
 }
 
-func (p *ruleDetailPanel) templateFile() string {
+func (p *ruleDetailPanel) templateLetter() string {
 	switch p.selectedRule {
 	case ViewRuleCase:
-		return "data.xlsx"
+		return "A"
 	case ViewRulePDF:
-		return ""
+		return "B"
 	case ViewRuleDIY:
-		return "process.xlsx"
+		return "C"
 	case ViewRuleWorkflow:
-		return "workflow.xlsx"
+		return "D"
 	}
-	return ""
+	return "A"
 }
 
 func (m Model) updateRuleDetail(msg tea.Msg) (tea.Model, tea.Cmd) {
@@ -174,10 +178,11 @@ func (m Model) updateRuleDetail(msg tea.Msg) (tea.Model, tea.Cmd) {
 					p.view = ruleDetailHelp
 					return m, nil
 				case 1:
-					if f := p.templateFile(); f != "" {
-						_ = downloadTemplate(f)
+					filename, err := generateTemplate(p.templateLetter())
+					if err == nil {
+						p.saved = true
+						p.templateMsg = SuccessStyle.Render("✅ 已生成: " + filename)
 					}
-					p.saved = true
 					return m, nil
 				case 2:
 					m.view = p.selectedRule
@@ -216,7 +221,7 @@ func (m Model) ruleDetailView() string {
 		menu := lipgloss.NewStyle().Padding(1, 2).Render(p.menu.View())
 		help := HelpStyle.Render("↑/↓ 选择  enter 确认  esc 返回")
 		if p.saved {
-			help += "\n" + SuccessStyle.Render("✅ 模板已生成")
+			help += "\n" + p.templateMsg
 		}
 		return lipgloss.JoinVertical(lipgloss.Center, title, menu, help)
 
@@ -232,8 +237,28 @@ func (m Model) ruleDetailView() string {
 	return ""
 }
 
-func downloadTemplate(filename string) error {
+func generateTemplate(letter string) (string, error) {
+	now := time.Now()
+	filename := fmt.Sprintf("template-%s-%s.xlsx", letter, now.Format("20060102150405"))
+
 	f := excelize.NewFile()
 	defer f.Close()
-	return f.SaveAs(filename)
+
+	headerStyle, _ := f.NewStyle(&excelize.Style{
+		Font:      &excelize.Font{Bold: true, Size: 11, Color: "#FFFFFF"},
+		Fill:      excelize.Fill{Type: "pattern", Color: []string{"#06B6D4"}, Pattern: 1},
+		Alignment: &excelize.Alignment{Horizontal: "center"},
+	})
+	f.SetSheetRow("Sheet1", "A1", &[]string{"request", "response", "time"})
+	f.SetCellStyle("Sheet1", "A1", "C1", headerStyle)
+	f.SetColWidth("Sheet1", "A", "B", 40)
+	f.SetColWidth("Sheet1", "C", "C", 20)
+	f.SetPanes("Sheet1", &excelize.Panes{
+		Freeze:      true,
+		YSplit:      1,
+		TopLeftCell: "A2",
+		ActivePane:  "bottomLeft",
+	})
+
+	return filename, f.SaveAs(filename)
 }
