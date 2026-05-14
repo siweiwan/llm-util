@@ -38,6 +38,7 @@ type Message struct {
 
 func main() {
 	_ = godotenv.Load()
+	ensureEnvFile()
 
 	if apiKey == "" {
 		apiKey = os.Getenv("LLM_API_KEY")
@@ -45,16 +46,13 @@ func main() {
 	if appId == "" {
 		appId = os.Getenv("LLM_APP_ID")
 	}
-	if apiKey == "" {
-		fmt.Print("请输入API Key: ")
-		fmt.Scanln(&apiKey)
-	}
-	if appId == "" {
-		fmt.Print("请输入AppId: ")
-		fmt.Scanln(&appId)
-	}
 
 	model := tui.NewModel(apiKey, appId)
+	model.OnSaveSettings = func(key, id string) error {
+		apiKey = key
+		appId = id
+		return saveEnvFile(key, id)
+	}
 	model.OnSend = func(prompt string, history []tui.Message) (string, error) {
 		conversationHistory = nil
 		for _, m := range history {
@@ -83,6 +81,44 @@ func main() {
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 		os.Exit(1)
 	}
+}
+
+
+func ensureEnvFile() {
+	if _, err := os.Stat(".env"); os.IsNotExist(err) {
+		f, err := os.Create(".env")
+		if err != nil {
+			return
+		}
+		defer f.Close()
+		f.WriteString("LLM_API_KEY=\nLLM_APP_ID=\nALIBABA_CLOUD_ACCESS_KEY_ID=\nALIBABA_CLOUD_ACCESS_KEY_SECRET=\n")
+	}
+}
+
+func saveEnvFile(apiKey, appId string) error {
+	data, err := os.ReadFile(".env")
+	if err != nil {
+		return err
+	}
+	lines := strings.Split(string(data), "\n")
+	updatedKey, updatedId := false, false
+	for i, line := range lines {
+		if strings.HasPrefix(line, "LLM_API_KEY=") {
+			lines[i] = "LLM_API_KEY=" + apiKey
+			updatedKey = true
+		}
+		if strings.HasPrefix(line, "LLM_APP_ID=") {
+			lines[i] = "LLM_APP_ID=" + appId
+			updatedId = true
+		}
+	}
+	if !updatedKey {
+		lines = append(lines, "LLM_API_KEY="+apiKey)
+	}
+	if !updatedId {
+		lines = append(lines, "LLM_APP_ID="+appId)
+	}
+	return os.WriteFile(".env", []byte(strings.Join(lines, "\n")), 0644)
 }
 
 func sendRequest(prompt string) (string, error) {

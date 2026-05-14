@@ -36,6 +36,7 @@ func (d itemDelegate) Render(w io.Writer, m list.Model, index int, item list.Ite
 
 func buildMainMenu() list.Model {
 	items := []list.Item{
+		menuItem{title: "配置管理", desc: "设置 API Key 和 AppId"},
 		menuItem{title: "开始/继续对话", desc: "自由模式，与 AI 对话"},
 		menuItem{title: "新对话", desc: "清空历史，开启新对话"},
 		menuItem{title: "规则模式", desc: "批量处理：Excel、PDF、工作流"},
@@ -73,16 +74,26 @@ func (m Model) updateMainMenu(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "enter":
 			switch m.mainMenu.Index() {
 			case 0:
-				m.view = ViewChat
-				return m, m.chat.Focus()
+				m.settings.reset(m.apiKey, m.appId)
+				m.view = ViewSettings
+				return m, nil
 			case 1:
-				m.history = nil
+				if m.apiKey == "" {
+					return m, func() tea.Msg { return showTipMsg("请先在配置管理中设置 API Key") }
+				}
 				m.view = ViewChat
 				return m, m.chat.Focus()
 			case 2:
+				if m.apiKey == "" {
+					return m, func() tea.Msg { return showTipMsg("请先在配置管理中设置 API Key") }
+				}
+				m.history = nil
+				m.view = ViewChat
+				return m, m.chat.Focus()
+			case 3:
 				m.view = ViewRulesMenu
 				return m, nil
-			case 3:
+			case 4:
 				return m, tea.Quit
 			}
 		}
@@ -96,6 +107,9 @@ func (m Model) mainMenuView() string {
 	title := TitleStyle.Render("LLM Util — 百炼批量查询工具")
 	menu := MenuListStyle.Render(m.mainMenu.View())
 	help := HelpStyle.Render("↑/↓ 选择  enter 确认  q 退出")
+	if m.tip != "" {
+		help += "\n" + WarnStyle.Render(m.tip)
+	}
 	return lipgloss.JoinVertical(lipgloss.Center, title, menu, help)
 }
 

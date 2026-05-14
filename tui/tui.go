@@ -9,6 +9,7 @@ type View int
 
 const (
 	ViewMainMenu View = iota
+	ViewSettings
 	ViewChat
 	ViewRulesMenu
 	ViewRuleCase
@@ -23,6 +24,8 @@ type Message struct {
 }
 
 // Callbacks set by main.go
+type showTipMsg string
+
 type ChatFunc func(prompt string, history []Message) (string, error)
 type ChatFileFunc func(prompt, filePath string) (string, error)
 
@@ -53,9 +56,13 @@ type Model struct {
 	OnRunDIY      StartBatchFunc
 	OnRunWorkflow StartBatchFunc
 
-	chat  chatPanel
-	batch batchPanel
+	OnSaveSettings func(apiKey, appId string) error
 
+	settings settingsPanel
+	chat     chatPanel
+	batch    batchPanel
+
+	tip    string
 	width  int
 	height int
 }
@@ -67,6 +74,7 @@ func NewModel(apiKey, appId string) Model {
 		appId:     appId,
 		mainMenu:  buildMainMenu(),
 		rulesMenu: buildRulesMenu(),
+		settings:  newSettingsPanel(apiKey, appId),
 		chat:      newChatPanel(),
 		batch:     newBatchPanel(),
 	}
@@ -81,13 +89,19 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.height = msg.Height
 		return m, nil
 	case tea.KeyMsg:
+		m.tip = ""
 		if msg.String() == "ctrl+c" {
 			return m, tea.Quit
 		}
+	case showTipMsg:
+		m.tip = string(msg)
+		return m, nil
 	}
 	switch m.view {
 	case ViewMainMenu:
 		return m.updateMainMenu(msg)
+	case ViewSettings:
+		return m.updateSettings(msg)
 	case ViewRulesMenu:
 		return m.updateRulesMenu(msg)
 	case ViewChat:
@@ -102,6 +116,8 @@ func (m Model) View() string {
 	switch m.view {
 	case ViewMainMenu:
 		return m.mainMenuView()
+	case ViewSettings:
+		return m.settingsView()
 	case ViewRulesMenu:
 		return m.rulesMenuView()
 	case ViewChat:
