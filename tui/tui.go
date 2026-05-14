@@ -43,9 +43,10 @@ type StartBatchFunc func(poolSize int, progress chan<- ProgressMsg) error
 type Model struct {
 	view View
 
-	apiKey  string
-	appId   string
-	history []Message
+	apiKey   string
+	appId    string
+	poolSize int
+	history  []Message
 
 	mainMenu  list.Model
 	rulesMenu list.Model
@@ -57,7 +58,7 @@ type Model struct {
 	OnRunDIY      StartBatchFunc
 	OnRunWorkflow StartBatchFunc
 
-	OnSaveSettings func(apiKey, appId string) error
+	OnSaveSettings func(apiKey, appId string, poolSize int) error
 
 	settings   settingsPanel
 	chat       chatPanel
@@ -69,14 +70,15 @@ type Model struct {
 	height int
 }
 
-func NewModel(apiKey, appId string) Model {
+func NewModel(apiKey, appId string, poolSize int) Model {
 	return Model{
-		view:      ViewMainMenu,
-		apiKey:    apiKey,
-		appId:     appId,
-		mainMenu:  buildMainMenu(),
-		rulesMenu: buildRulesMenu(),
-		settings:   newSettingsPanel(apiKey, appId),
+		view:       ViewMainMenu,
+		apiKey:     apiKey,
+		appId:      appId,
+		poolSize:   poolSize,
+		mainMenu:   buildMainMenu(),
+		rulesMenu:  buildRulesMenu(),
+		settings:   newSettingsPanel(apiKey, appId, poolSize),
 		chat:       newChatPanel(),
 		batch:      newBatchPanel(),
 		ruleDetail: newRuleDetailPanel(),

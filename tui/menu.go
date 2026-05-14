@@ -82,7 +82,7 @@ func (m Model) updateMainMenu(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "enter":
 			switch m.mainMenu.Index() {
 			case 0:
-				m.settings.reset(m.apiKey, m.appId)
+				m.settings.reset(m.apiKey, m.appId, m.poolSize)
 				m.view = ViewSettings
 				return m, nil
 			case 1:
