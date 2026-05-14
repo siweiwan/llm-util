@@ -49,7 +49,7 @@ type Model struct {
 	OnSend        ChatFunc
 	OnSendFile    ChatFileFunc
 	OnRunCase     StartBatchFunc
-	OnRunPDF      StartBatchFunc
+	OnRunPDF      func(poolSize int, question string, progress chan<- ProgressMsg) error
 	OnRunDIY      StartBatchFunc
 	OnRunWorkflow StartBatchFunc
 

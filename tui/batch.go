@@ -5,20 +5,23 @@ import (
 	"strings"
 
 	"github.com/charmbracelet/bubbles/progress"
+	"github.com/charmbracelet/bubbles/textarea"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 )
 
 type batchPanel struct {
-	progress progress.Model
-	logs     []batchLogEntry
-	total    int
-	done     int
-	errors   int
-	running  bool
-	poolSize int
-	ruleName string
-	ch       chan ProgressMsg
+	progress    progress.Model
+	logs        []batchLogEntry
+	total       int
+	done        int
+	errors      int
+	running     bool
+	poolSize    int
+	ruleName    string
+	ch          chan ProgressMsg
+	configuring bool
+	cfgTextarea textarea.Model
 }
 
 type batchLogEntry struct {
@@ -29,7 +32,12 @@ type batchLogEntry struct {
 
 func newBatchPanel() batchPanel {
 	p := progress.New(progress.WithDefaultGradient())
-	return batchPanel{progress: p, poolSize: 10}
+	ta := textarea.New()
+	ta.Placeholder = "输入要提问的问题..."
+	ta.SetHeight(3)
+	ta.ShowLineNumbers = false
+	ta.CharLimit = 4000
+	return batchPanel{progress: p, poolSize: 10, cfgTextarea: ta}
 }
 
 func (bp *batchPanel) reset() {
@@ -39,6 +47,8 @@ func (bp *batchPanel) reset() {
 	bp.errors = 0
 	bp.running = false
 	bp.poolSize = 10
+	bp.configuring = false
+	bp.cfgTextarea.Reset()
 }
 
 type batchStartMsg struct{}
@@ -62,6 +72,34 @@ func listenProgress(ch <-chan ProgressMsg) tea.Cmd {
 }
 
 func (m Model) updateBatch(msg tea.Msg) (tea.Model, tea.Cmd) {
+	if m.batch.configuring {
+		switch msg := msg.(type) {
+		case tea.KeyMsg:
+			switch msg.String() {
+			case "enter":
+				question := strings.TrimSpace(m.batch.cfgTextarea.Value())
+				if question == "" {
+					return m, nil
+				}
+				m.batch.configuring = false
+				m.batch.running = true
+				m.batch.ch = make(chan ProgressMsg, 200)
+				go func() {
+					defer close(m.batch.ch)
+					_ = m.OnRunPDF(m.batch.poolSize, question, m.batch.ch)
+				}()
+				return m, listenProgress(m.batch.ch)
+			case "esc":
+				m.batch.configuring = false
+				m.view = ViewRulesMenu
+				return m, nil
+			}
+		}
+		var cmd tea.Cmd
+		m.batch.cfgTextarea, cmd = m.batch.cfgTextarea.Update(msg)
+		return m, cmd
+	}
+
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
 		switch msg.String() {
@@ -73,15 +111,18 @@ func (m Model) updateBatch(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 
 	case batchStartMsg:
-		m.batch.running = true
 		m.batch.ruleName = ruleName(m.view)
 
+		if m.view == ViewRulePDF {
+			m.batch.configuring = true
+			return m, m.batch.cfgTextarea.Focus()
+		}
+
+		m.batch.running = true
 		var sbf StartBatchFunc
 		switch m.view {
 		case ViewRuleCase:
 			sbf = m.OnRunCase
-		case ViewRulePDF:
-			sbf = m.OnRunPDF
 		case ViewRuleDIY:
 			sbf = m.OnRunDIY
 		case ViewRuleWorkflow:
@@ -136,6 +177,19 @@ func ruleName(v View) string {
 }
 
 func (m Model) batchView() string {
+	if m.batch.configuring {
+		title := PanelTitleStyle.Render(m.batch.ruleName)
+		prompt := lipgloss.NewStyle().Foreground(Blue).Render("请输入要提问的问题：")
+		m.batch.cfgTextarea.SetWidth(m.width - 4)
+		help := HelpStyle.Render("enter 确认  esc 返回")
+		return lipgloss.JoinVertical(lipgloss.Left,
+			title,
+			prompt,
+			m.batch.cfgTextarea.View(),
+			help,
+		)
+	}
+
 	title := PanelTitleStyle.Render(m.batch.ruleName)
 	var body strings.Builder
 

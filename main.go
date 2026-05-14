@@ -69,8 +69,8 @@ func main() {
 		runCaseQueryRule(poolSize, progress)
 		return nil
 	}
-	model.OnRunPDF = func(poolSize int, progress chan<- tui.ProgressMsg) error {
-		return runPdfBatchQuery(poolSize, "", progress)
+	model.OnRunPDF = func(poolSize int, question string, progress chan<- tui.ProgressMsg) error {
+		return runPdfBatchQuery(poolSize, question, progress)
 	}
 	model.OnRunDIY = func(poolSize int, progress chan<- tui.ProgressMsg) error {
 		return runDIYQueryRule(poolSize, progress)
