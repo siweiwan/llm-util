@@ -269,8 +269,8 @@ func (m Model) batchView() string {
 	title := PanelTitleStyle.Render(m.batch.ruleName)
 	var body strings.Builder
 
-	body.WriteString(fmt.Sprintf("并发: %d  总计: %d",
-		m.batch.poolSize, m.batch.total,
+	body.WriteString(fmt.Sprintf("并发: %d  总计: %d  已处理: %d",
+		m.batch.poolSize, m.batch.total, m.batch.done+m.batch.errors,
 	))
 	body.WriteString("\n")
 	body.WriteString(SuccessStyle.Render(fmt.Sprintf("  ✅ 成功 %d", m.batch.done)))
@@ -286,32 +286,7 @@ func (m Model) batchView() string {
 		body.WriteString(m.batch.progress.ViewAs(ratio) + "\n\n")
 	}
 
-	start := len(m.batch.logs) - 40
-	if start < 0 {
-		start = 0
-	}
-	for _, e := range m.batch.logs[start:] {
-		var icon string
-		var style lipgloss.Style
-		switch e.status {
-		case "done":
-			icon, style = "✅", SuccessStyle
-		case "error":
-			icon, style = "❌", ErrorStyle
-		case "processing":
-			icon, style = "🔄", InfoStyle
-		case "skip":
-			icon, style = "⏭️", lipgloss.NewStyle().Foreground(Dim)
-		}
-		line := fmt.Sprintf("%s [%d] %s", icon, e.idx, e.name)
-		if style.GetForeground() != lipgloss.Color("") {
-			line = style.Render(line)
-		}
-		body.WriteString(line + "\n")
-	}
-
 	if !m.batch.running {
-		body.WriteString("\n")
 		if m.batch.errors == 0 {
 			body.WriteString(SuccessStyle.Render("🎉 所有请求成功完成！"))
 		} else {
@@ -319,7 +294,7 @@ func (m Model) batchView() string {
 		}
 	}
 
-	help := HelpStyle.Render("按 q 返回规则菜单")
+	help := HelpStyle.Render("按 q 返回")
 	if m.batch.running {
 		help = HelpStyle.Render("处理中，请等待...")
 	}
