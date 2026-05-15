@@ -22,6 +22,7 @@ type batchPanel struct {
 	running     bool
 	poolSize    int
 	ruleName    string
+	filename    string
 	ch          chan ProgressMsg
 	configuring bool
 	cfgTextarea textarea.Model
@@ -36,7 +37,10 @@ type batchLogEntry struct {
 }
 
 func newBatchPanel() batchPanel {
-	p := progress.New(progress.WithDefaultGradient())
+	p := progress.New(
+		progress.WithGradient("#06B6D4", "#22C55E"),
+		progress.WithoutPercentage(),
+	)
 	ta := textarea.New()
 	ta.Placeholder = "输入要提问的问题..."
 	ta.SetHeight(3)
@@ -63,6 +67,7 @@ func (bp *batchPanel) reset() {
 	bp.errors = 0
 	bp.skipped = 0
 	bp.running = false
+	bp.filename = ""
 	bp.poolSize = 10
 	bp.configuring = false
 	bp.filePicker = false
@@ -112,11 +117,11 @@ func (m Model) updateBatch(msg tea.Msg) (tea.Model, tea.Cmd) {
 				sel := m.batch.fileList.SelectedItem().(menuItem)
 				m.batch.filePicker = false
 				m.batch.running = true
+				m.batch.filename = sel.title
 				m.batch.ch = make(chan ProgressMsg, 200)
-				filename := sel.title
 				go func() {
 					defer close(m.batch.ch)
-					_ = m.OnRunModeA(m.batch.poolSize, filename, m.batch.ch)
+					_ = m.OnRunModeA(m.batch.poolSize, m.batch.filename, m.batch.ch)
 				}()
 				return m, listenProgress(m.batch.ch)
 			case "esc":
@@ -274,13 +279,13 @@ func (m Model) batchView() string {
 	var body strings.Builder
 
 	completed := m.batch.done + m.batch.errors + m.batch.skipped
-	fmt.Fprintf(&body, "⚡%d  📊%d  %s  %s",
+	fmt.Fprintf(&body, "⚡ 并发 %d  📊 总计 %d  %s  %s",
 		m.batch.poolSize, m.batch.total,
-		SuccessStyle.Render(fmt.Sprintf("✅%d", m.batch.done)),
-		ErrorStyle.Render(fmt.Sprintf("❌%d", m.batch.errors)),
+		SuccessStyle.Render(fmt.Sprintf("✅ 成功 %d", m.batch.done)),
+		ErrorStyle.Render(fmt.Sprintf("❌ 失败 %d", m.batch.errors)),
 	)
 	if m.batch.skipped > 0 {
-		fmt.Fprintf(&body, "  %s", lipgloss.NewStyle().Foreground(Dim).Render(fmt.Sprintf("⏭️%d", m.batch.skipped)))
+		fmt.Fprintf(&body, "  %s", lipgloss.NewStyle().Foreground(Dim).Render(fmt.Sprintf("⏭️ 跳过 %d", m.batch.skipped)))
 	}
 	body.WriteString("\n\n")
 
@@ -289,7 +294,15 @@ func (m Model) batchView() string {
 		if ratio > 1 {
 			ratio = 1
 		}
-		body.WriteString(m.batch.progress.ViewAs(ratio) + "\n")
+		body.WriteString(m.batch.progress.ViewAs(ratio) + "\n\n")
+	}
+
+	if !m.batch.running {
+		body.WriteString(SuccessStyle.Render("✅ 处理完成"))
+		if m.batch.filename != "" {
+			body.WriteString("  " + lipgloss.NewStyle().Foreground(Dim).Render("→ "+m.batch.filename))
+		}
+		body.WriteString("\n")
 	}
 
 	help := HelpStyle.Render("按 q 返回")
