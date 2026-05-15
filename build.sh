@@ -4,8 +4,9 @@ if [ -f .env ]; then
   export $(grep -v '^#' .env | grep -v '^$' | xargs)
 fi
 
-# 动态程序名：从 go.mod 取模块名，可通过 BIN_NAME 环境变量覆盖
-BIN_NAME=${BIN_NAME:-$(grep '^module ' go.mod | awk '{print $2}')}
+# 程序名称，改成你想要的名字即可
+# BIN_NAME=我的工具
+BIN_NAME=${BIN_NAME:-llm-util}
 OUTPUT="${BIN_NAME}.exe"
 
 # 使用 ldflags 将 AK/SK 嵌入二进制（源码中不出现明文凭据）
