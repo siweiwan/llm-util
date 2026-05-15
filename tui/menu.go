@@ -37,9 +37,9 @@ func (d itemDelegate) Render(w io.Writer, m list.Model, index int, item list.Ite
 func buildMainMenu() list.Model {
 	items := []list.Item{
 		menuItem{title: "配置管理", desc: "设置 API Key 和 AppID 等..."},
+		menuItem{title: "批处理", desc: "执行不同模式的批量调用"},
 		menuItem{title: "开始/继续对话", desc: "自由模式，与 AI 对话"},
 		menuItem{title: "新对话", desc: "清空历史，开启新对话"},
-		menuItem{title: "批处理", desc: "执行不同模式的批量调用"},
 		menuItem{title: "退出", desc: "退出程序"},
 	}
 	l := list.New(items, itemDelegate{}, 0, len(items)*2)
@@ -85,20 +85,20 @@ func (m Model) updateMainMenu(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.settings.reset(m.apiKey, m.appId, m.poolSize)
 				m.view = ViewSettings
 				return m, nil
-			case 1:
+			case 2:
 				if m.apiKey == "" {
 					return m, func() tea.Msg { return showTipMsg("请先在配置管理中设置 API Key") }
 				}
 				m.view = ViewChat
 				return m, m.chat.Focus()
-			case 2:
+			case 3:
 				if m.apiKey == "" {
 					return m, func() tea.Msg { return showTipMsg("请先在配置管理中设置 API Key") }
 				}
 				m.history = nil
 				m.view = ViewChat
 				return m, m.chat.Focus()
-			case 3:
+			case 1:
 				if m.apiKey == "" || m.appId == "" {
 					return m, func() tea.Msg { return showTipMsg("请先在配置管理中设置 API Key 和 AppId") }
 				}
