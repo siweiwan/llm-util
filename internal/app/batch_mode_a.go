@@ -38,6 +38,7 @@ func (a *App) RunModeA(poolSize int, filename string, progress chan<- tui.Progre
 
 	var wg sync.WaitGroup
 	mu := sync.Mutex{}
+	saveCounter := 0
 	pool, _ := ants.NewPool(poolSize)
 	defer pool.Release()
 
@@ -71,17 +72,23 @@ func (a *App) RunModeA(poolSize int, filename string, progress chan<- tui.Progre
 			if err != nil {
 				file.SetCellValue("Sheet1", fmt.Sprintf("C%d", rowIdx+1), "失败")
 				file.SetCellValue("Sheet1", fmt.Sprintf("E%d", rowIdx+1), err.Error())
-				_ = file.Save()
-				mu.Unlock()
-				progress <- tui.ProgressMsg{Index: rowIdx, Total: totalRows, Filename: req, Status: "error"}
-				return
+				saveCounter++
+			} else {
+				file.SetCellValue("Sheet1", fmt.Sprintf("B%d", rowIdx+1), resp.Output.Text)
+				file.SetCellValue("Sheet1", fmt.Sprintf("C%d", rowIdx+1), "完成")
+				file.SetCellValue("Sheet1", fmt.Sprintf("D%d", rowIdx+1), now)
+				saveCounter++
 			}
-			file.SetCellValue("Sheet1", fmt.Sprintf("B%d", rowIdx+1), resp.Output.Text)
-			file.SetCellValue("Sheet1", fmt.Sprintf("C%d", rowIdx+1), "完成")
-			file.SetCellValue("Sheet1", fmt.Sprintf("D%d", rowIdx+1), now)
-			_ = file.Save()
+			if saveCounter >= 10 {
+				_ = file.Save()
+				saveCounter = 0
+			}
 			mu.Unlock()
-			progress <- tui.ProgressMsg{Index: rowIdx, Total: totalRows, Filename: req, Status: "done"}
+			if err != nil {
+				progress <- tui.ProgressMsg{Index: rowIdx, Total: totalRows, Filename: req, Status: "error"}
+			} else {
+				progress <- tui.ProgressMsg{Index: rowIdx, Total: totalRows, Filename: req, Status: "done"}
+			}
 		})
 	}
 
