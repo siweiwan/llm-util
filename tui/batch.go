@@ -18,6 +18,7 @@ type batchPanel struct {
 	total       int
 	done        int
 	errors      int
+	skipped     int
 	running     bool
 	poolSize    int
 	ruleName    string
@@ -60,6 +61,7 @@ func (bp *batchPanel) reset() {
 	bp.total = 0
 	bp.done = 0
 	bp.errors = 0
+	bp.skipped = 0
 	bp.running = false
 	bp.poolSize = 10
 	bp.configuring = false
@@ -212,6 +214,8 @@ func (m Model) updateBatch(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.batch.done++
 		case "error":
 			m.batch.errors++
+		case "skip":
+			m.batch.skipped++
 		}
 		m.batch.logs = append(m.batch.logs, batchLogEntry{
 			idx: msg.Index, name: msg.Filename, status: msg.Status,
@@ -269,17 +273,22 @@ func (m Model) batchView() string {
 	title := PanelTitleStyle.Render(m.batch.ruleName)
 	var body strings.Builder
 
+	completed := m.batch.done + m.batch.errors + m.batch.skipped
 	body.WriteString(fmt.Sprintf("并发: %d  总计: %d  已处理: %d",
-		m.batch.poolSize, m.batch.total, m.batch.done+m.batch.errors,
+		m.batch.poolSize, m.batch.total, completed,
 	))
 	body.WriteString("\n")
 	body.WriteString(SuccessStyle.Render(fmt.Sprintf("  ✅ 成功 %d", m.batch.done)))
 	body.WriteString("  ")
 	body.WriteString(ErrorStyle.Render(fmt.Sprintf("❌ 失败 %d", m.batch.errors)))
+	if m.batch.skipped > 0 {
+		body.WriteString("  ")
+		body.WriteString(lipgloss.NewStyle().Foreground(Dim).Render(fmt.Sprintf("⏭️ 跳过 %d", m.batch.skipped)))
+	}
 	body.WriteString("\n\n")
 
 	if m.batch.total > 0 {
-		ratio := float64(m.batch.done+m.batch.errors) / float64(m.batch.total)
+		ratio := float64(completed) / float64(m.batch.total)
 		if ratio > 1 {
 			ratio = 1
 		}
@@ -287,7 +296,9 @@ func (m Model) batchView() string {
 	}
 
 	if !m.batch.running {
-		if m.batch.errors == 0 {
+		if m.batch.done == 0 && m.batch.errors == 0 && m.batch.skipped > 0 {
+			body.WriteString(WarnStyle.Render(fmt.Sprintf("所有 %d 条均已处理过，无需重复运行", m.batch.skipped)))
+		} else if m.batch.errors == 0 {
 			body.WriteString(SuccessStyle.Render("🎉 所有请求成功完成！"))
 		} else {
 			body.WriteString(ErrorStyle.Render(fmt.Sprintf("⚠️ 失败: %d", m.batch.errors)))

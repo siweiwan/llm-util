@@ -151,7 +151,7 @@ func (m Model) updateRulesMenu(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (m Model) rulesMenuView() string {
-	title := TitleStyle.Render("规则模式")
+	title := TitleStyle.Render("运行模式")
 	m.rulesMenu.SetHeight(len(m.rulesMenu.Items()) * 2)
 	menu := MenuListStyle.Render(m.rulesMenu.View())
 	help := HelpStyle.Render("↑/↓ 选择  enter 确认  esc 返回")
