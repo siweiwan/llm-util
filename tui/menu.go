@@ -99,12 +99,8 @@ func (m Model) updateMainMenu(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.view = ViewChat
 				return m, m.chat.Focus()
 			case 1:
-				if m.apiKey == "" || m.appId == "" {
-					return m, func() tea.Msg { return showTipMsg("请先在配置管理中设置 API Key 和 AppId") }
-				}
-				m.batch.reset()
-				m.view = ViewModeA
-				return m, m.batch.startCmd()
+				m.view = ViewRulesMenu
+				return m, nil
 			case 4:
 				return m, tea.Quit
 			}
