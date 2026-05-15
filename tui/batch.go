@@ -274,16 +274,13 @@ func (m Model) batchView() string {
 	var body strings.Builder
 
 	completed := m.batch.done + m.batch.errors + m.batch.skipped
-	body.WriteString(fmt.Sprintf("并发: %d  总计: %d  已处理: %d",
-		m.batch.poolSize, m.batch.total, completed,
-	))
-	body.WriteString("\n")
-	body.WriteString(SuccessStyle.Render(fmt.Sprintf("  ✅ 成功 %d", m.batch.done)))
-	body.WriteString("  ")
-	body.WriteString(ErrorStyle.Render(fmt.Sprintf("❌ 失败 %d", m.batch.errors)))
+	fmt.Fprintf(&body, "⚡%d  📊%d  %s  %s",
+		m.batch.poolSize, m.batch.total,
+		SuccessStyle.Render(fmt.Sprintf("✅%d", m.batch.done)),
+		ErrorStyle.Render(fmt.Sprintf("❌%d", m.batch.errors)),
+	)
 	if m.batch.skipped > 0 {
-		body.WriteString("  ")
-		body.WriteString(lipgloss.NewStyle().Foreground(Dim).Render(fmt.Sprintf("⏭️ 跳过 %d", m.batch.skipped)))
+		fmt.Fprintf(&body, "  %s", lipgloss.NewStyle().Foreground(Dim).Render(fmt.Sprintf("⏭️%d", m.batch.skipped)))
 	}
 	body.WriteString("\n\n")
 
@@ -292,17 +289,7 @@ func (m Model) batchView() string {
 		if ratio > 1 {
 			ratio = 1
 		}
-		body.WriteString(m.batch.progress.ViewAs(ratio) + "\n\n")
-	}
-
-	if !m.batch.running {
-		if m.batch.done == 0 && m.batch.errors == 0 && m.batch.skipped > 0 {
-			body.WriteString(WarnStyle.Render(fmt.Sprintf("所有 %d 条均已处理过，无需重复运行", m.batch.skipped)))
-		} else if m.batch.errors == 0 {
-			body.WriteString(SuccessStyle.Render("🎉 所有请求成功完成！"))
-		} else {
-			body.WriteString(ErrorStyle.Render(fmt.Sprintf("⚠️ 失败: %d", m.batch.errors)))
-		}
+		body.WriteString(m.batch.progress.ViewAs(ratio) + "\n")
 	}
 
 	help := HelpStyle.Render("按 q 返回")
