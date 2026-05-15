@@ -2,8 +2,10 @@ package tui
 
 import (
 	"fmt"
+	"os"
 	"strings"
 
+	"github.com/charmbracelet/bubbles/list"
 	"github.com/charmbracelet/bubbles/progress"
 	"github.com/charmbracelet/bubbles/textarea"
 	tea "github.com/charmbracelet/bubbletea"
@@ -22,6 +24,8 @@ type batchPanel struct {
 	ch          chan ProgressMsg
 	configuring bool
 	cfgTextarea textarea.Model
+	filePicker  bool
+	fileList    list.Model
 }
 
 type batchLogEntry struct {
@@ -37,7 +41,18 @@ func newBatchPanel() batchPanel {
 	ta.SetHeight(3)
 	ta.ShowLineNumbers = false
 	ta.CharLimit = 4000
-	return batchPanel{progress: p, poolSize: 10, cfgTextarea: ta}
+
+	fl := list.New([]list.Item{}, itemDelegate{}, 0, 10)
+	fl.SetShowTitle(false)
+	fl.SetShowStatusBar(false)
+	fl.SetFilteringEnabled(false)
+	fl.SetShowHelp(false)
+	fl.SetShowPagination(false)
+	fl.DisableQuitKeybindings()
+	fl.KeyMap.NextPage.SetEnabled(false)
+	fl.KeyMap.PrevPage.SetEnabled(false)
+
+	return batchPanel{progress: p, poolSize: 10, cfgTextarea: ta, fileList: fl}
 }
 
 func (bp *batchPanel) reset() {
@@ -48,6 +63,7 @@ func (bp *batchPanel) reset() {
 	bp.running = false
 	bp.poolSize = 10
 	bp.configuring = false
+	bp.filePicker = false
 	bp.cfgTextarea.Reset()
 }
 
@@ -71,7 +87,47 @@ func listenProgress(ch <-chan ProgressMsg) tea.Cmd {
 	}
 }
 
+func scanXlsxFiles() []list.Item {
+	var items []list.Item
+	entries, _ := os.ReadDir(".")
+	for _, e := range entries {
+		if !e.IsDir() && strings.HasSuffix(strings.ToLower(e.Name()), ".xlsx") {
+			items = append(items, menuItem{title: e.Name(), desc: ""})
+		}
+	}
+	return items
+}
+
 func (m Model) updateBatch(msg tea.Msg) (tea.Model, tea.Cmd) {
+	if m.batch.filePicker {
+		switch msg := msg.(type) {
+		case tea.KeyMsg:
+			switch msg.String() {
+			case "enter":
+				if len(m.batch.fileList.Items()) == 0 {
+					return m, nil
+				}
+				sel := m.batch.fileList.SelectedItem().(menuItem)
+				m.batch.filePicker = false
+				m.batch.running = true
+				m.batch.ch = make(chan ProgressMsg, 200)
+				filename := sel.title
+				go func() {
+					defer close(m.batch.ch)
+					_ = m.OnRunModeA(m.batch.poolSize, filename, m.batch.ch)
+				}()
+				return m, listenProgress(m.batch.ch)
+			case "esc":
+				m.batch.filePicker = false
+				m.view = ViewRulesMenu
+				return m, nil
+			}
+		}
+		var cmd tea.Cmd
+		m.batch.fileList, cmd = m.batch.fileList.Update(msg)
+		return m, cmd
+	}
+
 	if m.batch.configuring {
 		switch msg := msg.(type) {
 		case tea.KeyMsg:
@@ -84,14 +140,10 @@ func (m Model) updateBatch(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.batch.configuring = false
 				m.batch.running = true
 				m.batch.ch = make(chan ProgressMsg, 200)
-				view := m.view
+				prompt := input
 				go func() {
 					defer close(m.batch.ch)
-					if view == ViewRulePDF {
-						_ = m.OnRunPDF(m.batch.poolSize, input, m.batch.ch)
-					} else if view == ViewModeA {
-						_ = m.OnRunModeA(m.batch.poolSize, input, m.batch.ch)
-					}
+					_ = m.OnRunPDF(m.batch.poolSize, prompt, m.batch.ch)
 				}()
 				return m, listenProgress(m.batch.ch)
 			case "esc":
@@ -118,7 +170,18 @@ func (m Model) updateBatch(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case batchStartMsg:
 		m.batch.ruleName = ruleName(m.view)
 
-		if m.view == ViewRulePDF || m.view == ViewModeA {
+		if m.view == ViewModeA {
+			items := scanXlsxFiles()
+			if len(items) == 0 {
+				return m, func() tea.Msg { return showTipMsg("当前目录没有 .xlsx 文件") }
+			}
+			m.batch.fileList.SetItems(items)
+			m.batch.fileList.SetSize(m.width-4, len(items)*2)
+			m.batch.filePicker = true
+			return m, nil
+		}
+
+		if m.view == ViewRulePDF {
 			m.batch.configuring = true
 			return m, m.batch.cfgTextarea.Focus()
 		}
@@ -180,12 +243,18 @@ func ruleName(v View) string {
 }
 
 func (m Model) batchView() string {
+	if m.batch.filePicker {
+		title := PanelTitleStyle.Render(m.batch.ruleName)
+		prompt := lipgloss.NewStyle().Foreground(Blue).Render("请选择要处理的 Excel 文件：")
+		m.batch.fileList.SetHeight(len(m.batch.fileList.Items()) * 2)
+		body := lipgloss.NewStyle().Padding(1, 2).Render(m.batch.fileList.View())
+		help := HelpStyle.Render("↑/↓ 选择  enter 确认  esc 返回")
+		return lipgloss.JoinVertical(lipgloss.Left, title, prompt, body, help)
+	}
+
 	if m.batch.configuring {
 		title := PanelTitleStyle.Render(m.batch.ruleName)
 		promptText := "请输入要提问的问题："
-		if m.view == ViewModeA {
-			promptText = "请拖入或输入 Excel 文件路径："
-		}
 		prompt := lipgloss.NewStyle().Foreground(Blue).Render(promptText)
 		m.batch.cfgTextarea.SetWidth(m.width - 4)
 		help := HelpStyle.Render("enter 确认  esc 返回")
