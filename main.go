@@ -30,14 +30,6 @@ func main() {
 		a.AppId = id
 		return app.SaveEnvFile(key, id, ps)
 	}
-	model.OnSend = func(prompt string, history []tui.Message) (string, error) {
-		a.History = nil
-		for _, m := range history {
-			a.History = append(a.History, app.Message{Role: m.Role, Content: m.Content})
-		}
-		return a.SendRequest(prompt)
-	}
-	model.OnSendFile = a.SendRequestWithFile
 	model.OnRunModeA = a.RunModeA
 	model.OnRunPDF = a.RunPdfBatchQuery
 	model.OnRunDIY = a.RunDIYQueryRule

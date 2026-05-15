@@ -10,7 +10,6 @@ type View int
 const (
 	ViewMainMenu View = iota
 	ViewSettings
-	ViewChat
 	ViewRulesMenu
 	ViewRuleDetail
 	ViewModeA
@@ -19,16 +18,8 @@ const (
 	ViewRuleWorkflow
 )
 
-type Message struct {
-	Role    string
-	Content string
-}
-
 // Callbacks set by main.go
 type showTipMsg string
-
-type ChatFunc func(prompt string, history []Message) (string, error)
-type ChatFileFunc func(prompt, filePath string) (string, error)
 
 type ProgressMsg struct {
 	Index    int
@@ -46,22 +37,18 @@ type Model struct {
 	apiKey   string
 	appId    string
 	poolSize int
-	history  []Message
 
 	mainMenu  list.Model
 	rulesMenu list.Model
 
-	OnSend        ChatFunc
-	OnSendFile    ChatFileFunc
 	OnRunModeA     func(poolSize int, filename string, progress chan<- ProgressMsg) error
-	OnRunPDF      func(poolSize int, question string, progress chan<- ProgressMsg) error
-	OnRunDIY      StartBatchFunc
-	OnRunWorkflow StartBatchFunc
+	OnRunPDF       func(poolSize int, question string, progress chan<- ProgressMsg) error
+	OnRunDIY       StartBatchFunc
+	OnRunWorkflow  StartBatchFunc
 
 	OnSaveSettings func(apiKey, appId string, poolSize int) error
 
 	settings   settingsPanel
-	chat       chatPanel
 	batch      batchPanel
 	ruleDetail ruleDetailPanel
 
@@ -79,7 +66,6 @@ func NewModel(apiKey, appId string, poolSize int) Model {
 		mainMenu:   buildMainMenu(),
 		rulesMenu:  buildRulesMenu(),
 		settings:   newSettingsPanel(apiKey, appId, poolSize),
-		chat:       newChatPanel(),
 		batch:      newBatchPanel(),
 		ruleDetail: newRuleDetailPanel(),
 	}
@@ -113,8 +99,6 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m.updateRulesMenu(msg)
 	case ViewRuleDetail:
 		return m.updateRuleDetail(msg)
-	case ViewChat:
-		return m.updateChat(msg)
 	case ViewModeA, ViewRulePDF, ViewRuleDIY, ViewRuleWorkflow:
 		return m.updateBatch(msg)
 	}
@@ -131,13 +115,8 @@ func (m Model) View() string {
 		return m.rulesMenuView()
 	case ViewRuleDetail:
 		return m.ruleDetailView()
-	case ViewChat:
-		return m.chatView()
 	case ViewModeA, ViewRulePDF, ViewRuleDIY, ViewRuleWorkflow:
 		return m.batchView()
 	}
 	return ""
 }
-
-
-
