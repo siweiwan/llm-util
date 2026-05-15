@@ -68,16 +68,19 @@ func (a *App) RunModeA(poolSize int, filename string, progress chan<- tui.Progre
 
 			now := time.Now().Format("2006-01-02 15:04:05")
 			mu.Lock()
-			defer mu.Unlock()
 			if err != nil {
 				file.SetCellValue("Sheet1", fmt.Sprintf("C%d", rowIdx+1), "失败")
 				file.SetCellValue("Sheet1", fmt.Sprintf("E%d", rowIdx+1), err.Error())
+				_ = file.Save()
+				mu.Unlock()
 				progress <- tui.ProgressMsg{Index: rowIdx, Total: totalRows, Filename: req, Status: "error"}
 				return
 			}
 			file.SetCellValue("Sheet1", fmt.Sprintf("B%d", rowIdx+1), resp.Output.Text)
 			file.SetCellValue("Sheet1", fmt.Sprintf("C%d", rowIdx+1), "完成")
 			file.SetCellValue("Sheet1", fmt.Sprintf("D%d", rowIdx+1), now)
+			_ = file.Save()
+			mu.Unlock()
 			progress <- tui.ProgressMsg{Index: rowIdx, Total: totalRows, Filename: req, Status: "done"}
 		})
 	}
