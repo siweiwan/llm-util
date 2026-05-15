@@ -38,7 +38,7 @@ func main() {
 		return a.SendRequest(prompt)
 	}
 	model.OnSendFile = a.SendRequestWithFile
-	model.OnRunCase = a.RunCaseQueryRule
+	model.OnRunModeA = a.RunModeA
 	model.OnRunPDF = a.RunPdfBatchQuery
 	model.OnRunDIY = a.RunDIYQueryRule
 	model.OnRunWorkflow = a.RunWorkflowQueryRule

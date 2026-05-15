@@ -1,0 +1,87 @@
+package app
+
+import (
+	"context"
+	"fmt"
+	"llm-util/ai/app/impl/bailian"
+	"llm-util/tui"
+	"sync"
+	"time"
+
+	"github.com/panjf2000/ants/v2"
+	"github.com/xuri/excelize/v2"
+)
+
+func (a *App) RunModeA(poolSize int, filename string, progress chan<- tui.ProgressMsg) error {
+	if poolSize <= 0 {
+		poolSize = 10
+	} else if poolSize > 200 {
+		poolSize = 200
+	}
+
+	file, err := excelize.OpenFile(filename)
+	if err != nil {
+		return fmt.Errorf("打开文件失败: %w", err)
+	}
+	defer file.Close()
+
+	rows, err := file.GetRows("Sheet1")
+	if err != nil {
+		return fmt.Errorf("读取行数据失败: %w", err)
+	}
+	if len(rows) < 2 {
+		return fmt.Errorf("至少需要一行标题和一行数据")
+	}
+
+	client := bailian.NewClientWithAppIDAPIKey(a.AppId, a.APIKey)
+	totalRows := len(rows) - 1
+
+	var wg sync.WaitGroup
+	mu := sync.Mutex{}
+	pool, _ := ants.NewPool(poolSize)
+	defer pool.Release()
+
+	for i, row := range rows {
+		if i == 0 {
+			continue
+		}
+		prompt := row[0]
+		if prompt == "" {
+			continue
+		}
+		if len(row) >= 2 && row[1] != "" {
+			progress <- tui.ProgressMsg{Index: i, Total: totalRows, Filename: prompt, Status: "skip"}
+			continue
+		}
+
+		progress <- tui.ProgressMsg{Index: i, Total: totalRows, Filename: prompt, Status: "processing"}
+
+		wg.Add(1)
+		pool.Submit(func() {
+			defer wg.Done()
+			rowIdx := i
+			req := prompt
+
+			resp, err := client.CreateChatCompletion(context.Background(), bailian.ChatCompletionRequest{
+				Input: &bailian.RequestInput{Prompt: req},
+			})
+
+			now := time.Now().Format("2006-01-02 15:04:05")
+			mu.Lock()
+			defer mu.Unlock()
+			if err != nil {
+				file.SetCellValue("Sheet1", fmt.Sprintf("C%d", rowIdx+1), "失败")
+				file.SetCellValue("Sheet1", fmt.Sprintf("E%d", rowIdx+1), err.Error())
+				progress <- tui.ProgressMsg{Index: rowIdx, Total: totalRows, Filename: req, Status: "error"}
+				return
+			}
+			file.SetCellValue("Sheet1", fmt.Sprintf("B%d", rowIdx+1), resp.Output.Text)
+			file.SetCellValue("Sheet1", fmt.Sprintf("C%d", rowIdx+1), "完成")
+			file.SetCellValue("Sheet1", fmt.Sprintf("D%d", rowIdx+1), now)
+			progress <- tui.ProgressMsg{Index: rowIdx, Total: totalRows, Filename: req, Status: "done"}
+		})
+	}
+
+	wg.Wait()
+	return file.Save()
+}

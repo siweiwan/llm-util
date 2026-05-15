@@ -89,8 +89,8 @@ func (m Model) updateBatch(msg tea.Msg) (tea.Model, tea.Cmd) {
 					defer close(m.batch.ch)
 					if view == ViewRulePDF {
 						_ = m.OnRunPDF(m.batch.poolSize, input, m.batch.ch)
-					} else if view == ViewRuleCase {
-						_ = m.OnRunCase(m.batch.poolSize, input, m.batch.ch)
+					} else if view == ViewModeA {
+						_ = m.OnRunModeA(m.batch.poolSize, input, m.batch.ch)
 					}
 				}()
 				return m, listenProgress(m.batch.ch)
@@ -118,7 +118,7 @@ func (m Model) updateBatch(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case batchStartMsg:
 		m.batch.ruleName = ruleName(m.view)
 
-		if m.view == ViewRulePDF || m.view == ViewRuleCase {
+		if m.view == ViewRulePDF || m.view == ViewModeA {
 			m.batch.configuring = true
 			return m, m.batch.cfgTextarea.Focus()
 		}
@@ -167,8 +167,8 @@ func (m Model) updateBatch(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 func ruleName(v View) string {
 	switch v {
-	case ViewRuleCase:
-		return "规则1 · 案例查询"
+	case ViewModeA:
+		return "模式A"
 	case ViewRulePDF:
 		return "规则2 · PDF 批量提问"
 	case ViewRuleDIY:
@@ -183,7 +183,7 @@ func (m Model) batchView() string {
 	if m.batch.configuring {
 		title := PanelTitleStyle.Render(m.batch.ruleName)
 		promptText := "请输入要提问的问题："
-		if m.view == ViewRuleCase {
+		if m.view == ViewModeA {
 			promptText = "请拖入或输入 Excel 文件路径："
 		}
 		prompt := lipgloss.NewStyle().Foreground(Blue).Render(promptText)

@@ -13,7 +13,7 @@ const (
 	ViewChat
 	ViewRulesMenu
 	ViewRuleDetail
-	ViewRuleCase
+	ViewModeA
 	ViewRulePDF
 	ViewRuleDIY
 	ViewRuleWorkflow
@@ -53,7 +53,7 @@ type Model struct {
 
 	OnSend        ChatFunc
 	OnSendFile    ChatFileFunc
-	OnRunCase     func(poolSize int, filename string, progress chan<- ProgressMsg) error
+	OnRunModeA     func(poolSize int, filename string, progress chan<- ProgressMsg) error
 	OnRunPDF      func(poolSize int, question string, progress chan<- ProgressMsg) error
 	OnRunDIY      StartBatchFunc
 	OnRunWorkflow StartBatchFunc
@@ -115,7 +115,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m.updateRuleDetail(msg)
 	case ViewChat:
 		return m.updateChat(msg)
-	case ViewRuleCase, ViewRulePDF, ViewRuleDIY, ViewRuleWorkflow:
+	case ViewModeA, ViewRulePDF, ViewRuleDIY, ViewRuleWorkflow:
 		return m.updateBatch(msg)
 	}
 	return m, nil
@@ -133,7 +133,7 @@ func (m Model) View() string {
 		return m.ruleDetailView()
 	case ViewChat:
 		return m.chatView()
-	case ViewRuleCase, ViewRulePDF, ViewRuleDIY, ViewRuleWorkflow:
+	case ViewModeA, ViewRulePDF, ViewRuleDIY, ViewRuleWorkflow:
 		return m.batchView()
 	}
 	return ""

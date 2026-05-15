@@ -12,23 +12,30 @@ import (
 	"github.com/xuri/excelize/v2"
 )
 
-const helpCaseQuery = `# 案例查询
+const helpModeA = `# 模式A — 批量请求
 
-从 **data.xlsx** 批量提问，AI 回复写入 B 列。
+逐行读取 Excel 中的 prompt，调用百炼应用的 CreateChatCompletion 接口。
 
-## 数据格式
+## 使用步骤
 
-| A 列 | B 列 |
-|------|------|
-| 问题1 | （留空，AI 填写） |
-| 问题2 | （留空，AI 填写） |
+1.  点击 **模板下载**，生成模板 Excel
+2.  在 **request** 列（A 列）填入每条请求内容
+3.  返回规则详情，选择 **运行任务**
+4.  拖入或输入 Excel 文件路径，按 Enter
 
-- 第 1 行为标题行，从第 2 行开始处理
-- B 列有值时自动跳过
+## 模板格式
 
-## 并发设置
+| A(request) | B(response) | C(status) | D(time) | E(errMsg) |
+|---|---|---|---|---|
+| 提问内容 | （AI填写） | （自动） | （自动） | （自动） |
 
-建议 10-50，最大 200。
+- 第 1 行标题，第 2 行起处理
+- B 列有值自动跳过，支持断点续传
+- 并发数在 **配置管理** 中设置
+
+## 调用方式
+
+使用 bailian.Client.CreateChatCompletion，内置自动重试。
 `
 
 const helpPdfBatch = `# PDF 批量提问
@@ -129,9 +136,9 @@ func (p *ruleDetailPanel) reset(rule View) {
 	p.selectedRule = rule
 	p.saved = false
 	switch rule {
-	case ViewRuleCase:
-		p.ruleName = "案例查询"
-		p.markdown = helpCaseQuery
+	case ViewModeA:
+		p.ruleName = "模式A"
+		p.markdown = helpModeA
 	case ViewRulePDF:
 		p.ruleName = "PDF 批量提问"
 		p.markdown = helpPdfBatch
@@ -146,7 +153,7 @@ func (p *ruleDetailPanel) reset(rule View) {
 
 func (p *ruleDetailPanel) templateLetter() string {
 	switch p.selectedRule {
-	case ViewRuleCase:
+	case ViewModeA:
 		return "A"
 	case ViewRulePDF:
 		return "B"

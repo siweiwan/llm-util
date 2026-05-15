@@ -56,7 +56,7 @@ func buildMainMenu() list.Model {
 
 func buildRulesMenu() list.Model {
 	items := []list.Item{
-		menuItem{title: "案例查询", desc: "从 data.xlsx 批量提问，结果写回 B 列"},
+		menuItem{title: "模式A", desc: "逐行读取 Excel，调用百炼 CreateChatCompletion"},
 		menuItem{title: "PDF 批量提问", desc: "对 pdfs/ 目录所有 PDF 统一提问"},
 		menuItem{title: "DIY 提问", desc: "n×m 规模：多问题 × 多文件"},
 		menuItem{title: "工作流调用", desc: "自定义业务参数调用百炼应用"},
@@ -132,7 +132,7 @@ func (m Model) updateRulesMenu(msg tea.Msg) (tea.Model, tea.Cmd) {
 			var target View
 			switch m.rulesMenu.Index() {
 			case 0:
-				target = ViewRuleCase
+				target = ViewModeA
 			case 1:
 				target = ViewRulePDF
 			case 2:
