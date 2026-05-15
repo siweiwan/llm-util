@@ -200,16 +200,20 @@ func (m Model) batchView() string {
 	title := PanelTitleStyle.Render(m.batch.ruleName)
 	var body strings.Builder
 
-	body.WriteString(fmt.Sprintf("⚡ 并发: %d  ✅ 完成: %d  ❌ 失败: %d",
-		m.batch.poolSize, m.batch.done, m.batch.errors,
+	body.WriteString(fmt.Sprintf("并发: %d  总计: %d",
+		m.batch.poolSize, m.batch.total,
 	))
-	if m.batch.total > 0 {
-		body.WriteString(fmt.Sprintf("  📊 总计: %d", m.batch.total))
-	}
+	body.WriteString("\n")
+	body.WriteString(SuccessStyle.Render(fmt.Sprintf("  ✅ 成功 %d", m.batch.done)))
+	body.WriteString("  ")
+	body.WriteString(ErrorStyle.Render(fmt.Sprintf("❌ 失败 %d", m.batch.errors)))
 	body.WriteString("\n\n")
 
 	if m.batch.total > 0 {
 		ratio := float64(m.batch.done+m.batch.errors) / float64(m.batch.total)
+		if ratio > 1 {
+			ratio = 1
+		}
 		body.WriteString(m.batch.progress.ViewAs(ratio) + "\n\n")
 	}
 

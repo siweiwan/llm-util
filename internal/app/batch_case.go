@@ -95,6 +95,9 @@ func (a *App) RunCaseQueryRule(poolSize int, filename string, progress chan<- tu
 					fmt.Printf("请求失败: %v\n", err)
 				}
 				errCount++
+				mu.Lock()
+				file.SetCellValue("Sheet1", fmt.Sprintf("E%d", i+1), err.Error())
+				mu.Unlock()
 				return
 			}
 
