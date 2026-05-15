@@ -15,8 +15,8 @@ import (
 func (a *App) RunModeA(poolSize int, filename string, progress chan<- tui.ProgressMsg) error {
 	if poolSize <= 0 {
 		poolSize = 10
-	} else if poolSize > 200 {
-		poolSize = 200
+	} else if poolSize > 20 {
+		poolSize = 20
 	}
 
 	file, err := excelize.OpenFile(filename)

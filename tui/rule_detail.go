@@ -6,22 +6,22 @@ import (
 
 	"github.com/charmbracelet/bubbles/list"
 	"github.com/charmbracelet/bubbles/viewport"
-	"github.com/charmbracelet/glamour"
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/glamour"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/xuri/excelize/v2"
 )
 
 const helpModeA = `# 模式A — 批量请求
 
-逐行读取 Excel 中的 prompt，调用百炼应用的 CreateChatCompletion 接口。
+逐行读取 Excel 中的 问题，批量调用百炼应用接口。
 
 ## 使用步骤
 
-1.  点击 **模板下载**，生成模板 Excel
-2.  在 **request** 列（A 列）填入每条请求内容
-3.  返回规则详情，选择 **运行任务**
-4.  拖入或输入 Excel 文件路径，按 Enter
+1.  在 **配置管理**，设置 并发数、AppID
+2.  点击 **模板下载**，生成模板 Excel
+3.  在 **request** 列（A 列）填入每条请求内容
+4.  选择 **运行任务**，拖入或输入 Excel 文件路径，按 Enter 执行
 
 ## 模板格式
 
@@ -31,11 +31,7 @@ const helpModeA = `# 模式A — 批量请求
 
 - 第 1 行标题，第 2 行起处理
 - B 列有值自动跳过，支持断点续传
-- 并发数在 **配置管理** 中设置
 
-## 调用方式
-
-使用 bailian.Client.CreateChatCompletion，内置自动重试。
 `
 
 const helpPdfBatch = `# PDF 批量提问
