@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"llm-util/conf"
 	"llm-util/internal/app"
 	"llm-util/tui"
 	"llm-util/util/logger"
@@ -22,23 +23,29 @@ func main() {
 		fmt.Fprintf(os.Stderr, "日志初始化失败: %v\n", err)
 	}
 
-	apiKey := os.Getenv("LLM_API_KEY")
-	appId := os.Getenv("LLM_APP_ID")
-	poolSize, _ := strconv.Atoi(os.Getenv("POOL_SIZE"))
-	if poolSize <= 0 {
-		poolSize = 10
+	// 构建配置
+	cfg := conf.DefaultConfig()
+	cfg.APIKey = os.Getenv("LLM_API_KEY")
+	cfg.AppID = os.Getenv("LLM_APP_ID")
+	if ws := os.Getenv("WORKSPACE_ID"); ws != "" {
+		cfg.WorkspaceID = ws
 	}
+	if ps, _ := strconv.Atoi(os.Getenv("POOL_SIZE")); ps > 0 {
+		cfg.PoolSize = ps
+	}
+	conf.WORKSPACE_ID = cfg.WorkspaceID // 同步全局变量
 
-	slog.Info("应用启动", "appId", appId, "poolSize", poolSize)
+	slog.Info("应用启动", "appId", cfg.AppID, "workspaceId", cfg.WorkspaceID, "poolSize", cfg.PoolSize)
 
-	a := app.New(apiKey, appId)
+	a := app.New(cfg.APIKey, cfg.AppID)
 
-	model := tui.NewModel(a.APIKey, a.AppId, poolSize)
-	model.OnSaveSettings = func(key, id string, ps int) error {
-		a.APIKey = key
-		a.AppId = id
-		slog.Info("设置已保存", "appId", id, "poolSize", ps)
-		return app.SaveEnvFile(key, id, ps)
+	model := tui.NewModel(cfg)
+	model.OnSaveSettings = func(c *conf.Config) error {
+		a.APIKey = c.APIKey
+		a.AppId = c.AppID
+		conf.WORKSPACE_ID = c.WorkspaceID
+		slog.Info("设置已保存", "appId", c.AppID, "workspaceId", c.WorkspaceID, "poolSize", c.PoolSize)
+		return app.SaveEnvFile(c)
 	}
 	model.OnRunModeA = a.RunModeA
 	model.OnRunModeB = a.RunModeB

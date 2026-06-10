@@ -1,6 +1,8 @@
 package tui
 
 import (
+	"llm-util/conf"
+
 	"github.com/charmbracelet/bubbles/list"
 	tea "github.com/charmbracelet/bubbletea"
 )
@@ -33,10 +35,7 @@ type StartBatchFunc func(poolSize int, progress chan<- ProgressMsg) error
 
 type Model struct {
 	view View
-
-	apiKey   string
-	appId    string
-	poolSize int
+	cfg  *conf.Config
 
 	mainMenu  list.Model
 	rulesMenu list.Model
@@ -46,7 +45,7 @@ type Model struct {
 	OnRunDIY      StartBatchFunc
 	OnRunWorkflow StartBatchFunc
 
-	OnSaveSettings func(apiKey, appId string, poolSize int) error
+	OnSaveSettings func(cfg *conf.Config) error
 
 	settings   settingsPanel
 	batch      batchPanel
@@ -57,15 +56,13 @@ type Model struct {
 	height int
 }
 
-func NewModel(apiKey, appId string, poolSize int) Model {
+func NewModel(cfg *conf.Config) Model {
 	return Model{
 		view:       ViewMainMenu,
-		apiKey:     apiKey,
-		appId:      appId,
-		poolSize:   poolSize,
+		cfg:        cfg,
 		mainMenu:   buildMainMenu(),
 		rulesMenu:  buildRulesMenu(),
-		settings:   newSettingsPanel(apiKey, appId, poolSize),
+		settings:   newSettingsPanel(cfg),
 		batch:      newBatchPanel(),
 		ruleDetail: newRuleDetailPanel(),
 	}

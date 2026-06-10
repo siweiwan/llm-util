@@ -1,6 +1,7 @@
 package tui
 
 import (
+	"llm-util/conf"
 	"strconv"
 
 	"github.com/charmbracelet/bubbles/textinput"
@@ -9,46 +10,54 @@ import (
 )
 
 type settingsPanel struct {
-	apiKeyInput   textinput.Model
-	appIdInput    textinput.Model
-	poolSizeInput textinput.Model
-	focusIndex    int
-	saved         bool
+	apiKeyInput      textinput.Model
+	appIdInput       textinput.Model
+	workspaceIdInput textinput.Model
+	poolSizeInput    textinput.Model
+	focusIndex       int
+	saved            bool
 }
 
-func newSettingsPanel(apiKey, appId string, poolSize int) settingsPanel {
+func newSettingsPanel(cfg *conf.Config) settingsPanel {
 	ak := textinput.New()
 	ak.Placeholder = "输入 API Key..."
-	ak.SetValue(apiKey)
+	ak.SetValue(cfg.APIKey)
 	ak.EchoMode = textinput.EchoPassword
 	ak.EchoCharacter = '*'
 	ak.Width = 60
 
 	aid := textinput.New()
 	aid.Placeholder = "输入 AppId..."
-	aid.SetValue(appId)
+	aid.SetValue(cfg.AppID)
 	aid.Width = 60
+
+	ws := textinput.New()
+	ws.Placeholder = "输入 Workspace ID..."
+	ws.SetValue(cfg.WorkspaceID)
+	ws.Width = 60
 
 	ps := textinput.New()
 	ps.Placeholder = "输入 并发数..."
-	ps.SetValue(strconv.Itoa(poolSize))
+	ps.SetValue(strconv.Itoa(cfg.PoolSize))
 	ps.Width = 10
 	ps.CharLimit = 3
 
 	ak.Focus()
 
 	return settingsPanel{
-		apiKeyInput:   ak,
-		appIdInput:    aid,
-		poolSizeInput: ps,
-		focusIndex:    0,
+		apiKeyInput:      ak,
+		appIdInput:       aid,
+		workspaceIdInput: ws,
+		poolSizeInput:    ps,
+		focusIndex:       0,
 	}
 }
 
-func (sp *settingsPanel) reset(apiKey, appId string, poolSize int) {
-	sp.apiKeyInput.SetValue(apiKey)
-	sp.appIdInput.SetValue(appId)
-	sp.poolSizeInput.SetValue(strconv.Itoa(poolSize))
+func (sp *settingsPanel) reset(cfg *conf.Config) {
+	sp.apiKeyInput.SetValue(cfg.APIKey)
+	sp.appIdInput.SetValue(cfg.AppID)
+	sp.workspaceIdInput.SetValue(cfg.WorkspaceID)
+	sp.poolSizeInput.SetValue(strconv.Itoa(cfg.PoolSize))
 	sp.saved = false
 }
 
@@ -61,26 +70,25 @@ func (m Model) updateSettings(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.settings.saved = false
 			return m, nil
 		case "tab":
-			m.settings.focusIndex = (m.settings.focusIndex + 1) % 3
+			m.settings.focusIndex = (m.settings.focusIndex + 1) % 4
 			return m, m.settings.focusInput()
 		case "shift+tab":
-			m.settings.focusIndex = (m.settings.focusIndex - 1 + 3) % 3
+			m.settings.focusIndex = (m.settings.focusIndex - 1 + 4) % 4
 			return m, m.settings.focusInput()
 		case "enter":
-			key := m.settings.apiKeyInput.Value()
-			id := m.settings.appIdInput.Value()
+			m.cfg.APIKey = m.settings.apiKeyInput.Value()
+			m.cfg.AppID = m.settings.appIdInput.Value()
+			m.cfg.WorkspaceID = m.settings.workspaceIdInput.Value()
 			ps, _ := strconv.Atoi(m.settings.poolSizeInput.Value())
 			if ps <= 0 {
 				ps = 10
 			} else if ps > 200 {
 				ps = 200
 			}
+			m.cfg.PoolSize = ps
 			if m.OnSaveSettings != nil {
-				_ = m.OnSaveSettings(key, id, ps)
+				_ = m.OnSaveSettings(m.cfg)
 			}
-			m.apiKey = key
-			m.appId = id
-			m.poolSize = ps
 			m.settings.saved = true
 			return m, nil
 		}
@@ -93,6 +101,8 @@ func (m Model) updateSettings(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case 1:
 		m.settings.appIdInput, cmd = m.settings.appIdInput.Update(msg)
 	case 2:
+		m.settings.workspaceIdInput, cmd = m.settings.workspaceIdInput.Update(msg)
+	case 3:
 		m.settings.poolSizeInput, cmd = m.settings.poolSizeInput.Update(msg)
 	}
 	return m, cmd
@@ -101,6 +111,7 @@ func (m Model) updateSettings(msg tea.Msg) (tea.Model, tea.Cmd) {
 func (sp *settingsPanel) focusInput() tea.Cmd {
 	sp.apiKeyInput.Blur()
 	sp.appIdInput.Blur()
+	sp.workspaceIdInput.Blur()
 	sp.poolSizeInput.Blur()
 	switch sp.focusIndex {
 	case 0:
@@ -108,6 +119,8 @@ func (sp *settingsPanel) focusInput() tea.Cmd {
 	case 1:
 		return sp.appIdInput.Focus()
 	case 2:
+		return sp.workspaceIdInput.Focus()
+	case 3:
 		return sp.poolSizeInput.Focus()
 	}
 	return nil
@@ -120,6 +133,7 @@ func (m Model) settingsView() string {
 
 	keyLabel := labelStyle.Render("API Key:")
 	appLabel := labelStyle.Render("AppId:")
+	wsLabel := labelStyle.Render("Workspace ID:")
 	poolLabel := labelStyle.Render("并发数:")
 
 	if m.settings.saved {
@@ -132,6 +146,9 @@ func (m Model) settingsView() string {
 		"",
 		appLabel,
 		m.settings.appIdInput.View(),
+		"",
+		wsLabel,
+		m.settings.workspaceIdInput.View(),
 		"",
 		poolLabel,
 		m.settings.poolSizeInput.View(),
