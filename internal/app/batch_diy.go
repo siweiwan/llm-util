@@ -62,6 +62,7 @@ func (a *App) RunDIYQueryRule(poolSize int, progress chan<- tui.ProgressMsg) err
 			}
 		} else {
 			if row[0] == "" || row[1] == "" {
+				progress <- tui.ProgressMsg{Index: i, Total: totalRows, Filename: row[1], Status: "skip"}
 				continue
 			}
 		}

@@ -171,7 +171,7 @@ func (p *ruleDetailPanel) reset(rule View) {
 		p.ruleName = "模式A"
 		p.markdown = helpModeA
 		p.menu = buildDefaultDetailMenu()
-	case ViewRulePDF:
+	case ViewRuleFile:
 		p.ruleName = "模式B"
 		p.markdown = helpModeB
 		p.menu = buildModeBDetailMenu()
@@ -190,7 +190,7 @@ func (p *ruleDetailPanel) templateLetter() string {
 	switch p.selectedRule {
 	case ViewModeA:
 		return "A"
-	case ViewRulePDF:
+	case ViewRuleFile:
 		return "B"
 	case ViewRuleDIY:
 		return "C"
@@ -256,7 +256,7 @@ func (m Model) handleDetailMenuEnter() (tea.Model, tea.Cmd) {
 	idx := p.menu.Index()
 
 	// Mode B has 4 items, others have 3
-	if p.selectedRule == ViewRulePDF {
+	if p.selectedRule == ViewRuleFile {
 		switch idx {
 		case 0: // 使用说明
 			return m.showHelp()

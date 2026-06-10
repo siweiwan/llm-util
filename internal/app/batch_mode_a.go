@@ -50,6 +50,7 @@ func (a *App) RunModeA(poolSize int, filename string, progress chan<- tui.Progre
 		}
 		prompt := row[0]
 		if prompt == "" {
+			progress <- tui.ProgressMsg{Index: i, Total: totalRows, Filename: prompt, Status: "skip"}
 			continue
 		}
 		if len(row) >= 2 && row[1] != "" {

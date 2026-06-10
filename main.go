@@ -41,7 +41,7 @@ func main() {
 		return app.SaveEnvFile(key, id, ps)
 	}
 	model.OnRunModeA = a.RunModeA
-	model.OnRunPDF = a.RunPdfBatchQuery
+	model.OnRunModeB = a.RunModeB
 	model.OnRunDIY = a.RunDIYQueryRule
 	model.OnRunWorkflow = a.RunWorkflowQueryRule
 

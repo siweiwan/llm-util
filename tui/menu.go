@@ -119,7 +119,7 @@ func (m Model) updateRulesMenu(msg tea.Msg) (tea.Model, tea.Cmd) {
 			case 0:
 				target = ViewModeA
 			case 1:
-				target = ViewRulePDF
+				target = ViewRuleFile
 			case 2:
 				target = ViewRuleDIY
 			case 3:

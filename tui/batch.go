@@ -112,8 +112,8 @@ func (m Model) updateBatch(msg tea.Msg) (tea.Model, tea.Cmd) {
 				go func() {
 					defer close(m.batch.ch)
 					switch m.view {
-					case ViewRulePDF:
-						_ = m.OnRunPDF(m.batch.poolSize, m.batch.filename, m.batch.ch)
+					case ViewRuleFile:
+						_ = m.OnRunModeB(m.batch.poolSize, m.batch.filename, m.batch.ch)
 					default:
 						_ = m.OnRunModeA(m.batch.poolSize, m.batch.filename, m.batch.ch)
 					}
@@ -144,7 +144,7 @@ func (m Model) updateBatch(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.batch.ruleName = ruleName(m.view)
 
 		// Mode A and Mode B both use file picker
-		if m.view == ViewModeA || m.view == ViewRulePDF {
+		if m.view == ViewModeA || m.view == ViewRuleFile {
 			items := scanXlsxFiles()
 			if len(items) == 0 {
 				return m, func() tea.Msg { return showTipMsg("当前目录没有 .xlsx 文件") }
@@ -203,7 +203,7 @@ func ruleName(v View) string {
 	switch v {
 	case ViewModeA:
 		return "模式A"
-	case ViewRulePDF:
+	case ViewRuleFile:
 		return "模式B"
 	case ViewRuleDIY:
 		return "DIY 提问"
@@ -227,14 +227,12 @@ func (m Model) batchView() string {
 	var body strings.Builder
 
 	completed := m.batch.done + m.batch.errors + m.batch.skipped
-	fmt.Fprintf(&body, "⚡ 并发 %d  📊 总计 %d  %s  %s",
+	fmt.Fprintf(&body, "⚡ 并发 %d  📊 总计 %d  %s  %s  %s",
 		m.batch.poolSize, m.batch.total,
 		SuccessStyle.Render(fmt.Sprintf("✅ 成功 %d", m.batch.done)),
 		ErrorStyle.Render(fmt.Sprintf("❌ 失败 %d", m.batch.errors)),
+		lipgloss.NewStyle().Foreground(Dim).Render(fmt.Sprintf("⏭️ 跳过 %d", m.batch.skipped)),
 	)
-	if m.batch.skipped > 0 {
-		fmt.Fprintf(&body, "  %s", lipgloss.NewStyle().Foreground(Dim).Render(fmt.Sprintf("⏭️ 跳过 %d", m.batch.skipped)))
-	}
 	body.WriteString("\n\n")
 
 	if m.batch.total > 0 {

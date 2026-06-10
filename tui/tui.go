@@ -13,7 +13,7 @@ const (
 	ViewRulesMenu
 	ViewRuleDetail
 	ViewModeA
-	ViewRulePDF
+	ViewRuleFile
 	ViewRuleDIY
 	ViewRuleWorkflow
 )
@@ -42,7 +42,7 @@ type Model struct {
 	rulesMenu list.Model
 
 	OnRunModeA    func(poolSize int, filename string, progress chan<- ProgressMsg) error
-	OnRunPDF      func(poolSize int, xlsxFile string, progress chan<- ProgressMsg) error
+	OnRunModeB    func(poolSize int, xlsxFile string, progress chan<- ProgressMsg) error
 	OnRunDIY      StartBatchFunc
 	OnRunWorkflow StartBatchFunc
 
@@ -99,7 +99,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m.updateRulesMenu(msg)
 	case ViewRuleDetail:
 		return m.updateRuleDetail(msg)
-	case ViewModeA, ViewRulePDF, ViewRuleDIY, ViewRuleWorkflow:
+	case ViewModeA, ViewRuleFile, ViewRuleDIY, ViewRuleWorkflow:
 		return m.updateBatch(msg)
 	}
 	return m, nil
@@ -115,7 +115,7 @@ func (m Model) View() string {
 		return m.rulesMenuView()
 	case ViewRuleDetail:
 		return m.ruleDetailView()
-	case ViewModeA, ViewRulePDF, ViewRuleDIY, ViewRuleWorkflow:
+	case ViewModeA, ViewRuleFile, ViewRuleDIY, ViewRuleWorkflow:
 		return m.batchView()
 	}
 	return ""
