@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"strings"
+	"time"
 
 	"github.com/charmbracelet/bubbles/list"
 	"github.com/charmbracelet/bubbles/progress"
@@ -12,19 +13,21 @@ import (
 )
 
 type batchPanel struct {
-	progress   progress.Model
-	logs       []batchLogEntry
-	total      int
-	done       int
-	errors     int
-	skipped    int
-	running    bool
-	poolSize   int
-	ruleName   string
-	filename   string
-	ch         chan ProgressMsg
-	filePicker bool
-	fileList   list.Model
+	progress     progress.Model
+	logs         []batchLogEntry
+	total        int
+	done         int
+	errors       int
+	skipped      int
+	running      bool
+	poolSize     int
+	ruleName     string
+	filename     string
+	ch           chan ProgressMsg
+	filePicker   bool
+	fileList     list.Model
+	tickID       int // 动画标识，防止过期 tick 消息继续触发
+	spinnerFrame int // 旋转动画帧
 }
 
 type batchLogEntry struct {
@@ -62,6 +65,33 @@ func (bp *batchPanel) reset() {
 	bp.filename = ""
 	bp.poolSize = 10
 	bp.filePicker = false
+	bp.tickID++
+}
+
+// ratio 计算当前完成比例
+func (bp *batchPanel) ratio() float64 {
+	if bp.total <= 0 {
+		return 0
+	}
+	completed := bp.done + bp.errors + bp.skipped
+	r := float64(completed) / float64(bp.total)
+	if r > 1 {
+		r = 1
+	}
+	return r
+}
+
+// progressTickMsg 驱动进度条流动动画
+type progressTickMsg struct {
+	id int
+}
+
+var spinnerFrames = []rune{'⠋', '⠙', '⠹', '⠸', '⠼', '⠴', '⠦', '⠧', '⠇', '⠏'}
+
+func tickCmd(id int) tea.Cmd {
+	return tea.Tick(time.Millisecond*100, func(_ time.Time) tea.Msg {
+		return progressTickMsg{id: id}
+	})
 }
 
 type batchStartMsg struct{}
@@ -118,7 +148,7 @@ func (m Model) updateBatch(msg tea.Msg) (tea.Model, tea.Cmd) {
 						_ = m.OnRunModeA(m.batch.poolSize, m.batch.filename, m.batch.ch)
 					}
 				}()
-				return m, listenProgress(m.batch.ch)
+				return m, tea.Batch(listenProgress(m.batch.ch), tickCmd(m.batch.tickID))
 			case "esc":
 				m.batch.filePicker = false
 				m.view = ViewRulesMenu
@@ -172,7 +202,20 @@ func (m Model) updateBatch(msg tea.Msg) (tea.Model, tea.Cmd) {
 			defer close(m.batch.ch)
 			_ = sbf(m.batch.poolSize, m.batch.ch)
 		}()
-		return m, listenProgress(m.batch.ch)
+		return m, tea.Batch(listenProgress(m.batch.ch), tickCmd(m.batch.tickID))
+
+	case progressTickMsg:
+		if msg.id == m.batch.tickID && m.batch.running {
+			cmd := m.batch.progress.SetPercent(m.batch.ratio())
+			m.batch.spinnerFrame = (m.batch.spinnerFrame + 1) % len(spinnerFrames)
+			return m, tea.Batch(cmd, tickCmd(msg.id))
+		}
+		return m, nil
+
+	case progress.FrameMsg:
+		progressModel, cmd := m.batch.progress.Update(msg)
+		m.batch.progress = progressModel.(progress.Model)
+		return m, cmd
 
 	case batchProgressMsg:
 		m.batch.total = msg.Total
@@ -190,11 +233,15 @@ func (m Model) updateBatch(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if len(m.batch.logs) > 200 {
 			m.batch.logs = m.batch.logs[len(m.batch.logs)-200:]
 		}
-		return m, listenProgress(m.batch.ch)
+		// 立即更新进度条，不等待定时器
+		cmd := m.batch.progress.SetPercent(m.batch.ratio())
+		return m, tea.Batch(cmd, listenProgress(m.batch.ch))
 
 	case batchDoneMsg:
 		m.batch.running = false
-		return m, nil
+		// 确保进度条显示完成状态
+		cmd := m.batch.progress.SetPercent(1.0)
+		return m, cmd
 	}
 	return m, nil
 }
@@ -226,7 +273,6 @@ func (m Model) batchView() string {
 	title := PanelTitleStyle.Render(m.batch.ruleName)
 	var body strings.Builder
 
-	completed := m.batch.done + m.batch.errors + m.batch.skipped
 	fmt.Fprintf(&body, "⚡ 并发 %d  📊 总计 %d  %s  %s  %s",
 		m.batch.poolSize, m.batch.total,
 		SuccessStyle.Render(fmt.Sprintf("✅ 成功 %d", m.batch.done)),
@@ -236,11 +282,7 @@ func (m Model) batchView() string {
 	body.WriteString("\n\n")
 
 	if m.batch.total > 0 {
-		ratio := float64(completed) / float64(m.batch.total)
-		if ratio > 1 {
-			ratio = 1
-		}
-		body.WriteString(m.batch.progress.ViewAs(ratio) + "\n\n")
+		body.WriteString(m.batch.progress.View() + "\n\n")
 	}
 
 	if !m.batch.running {
@@ -253,7 +295,8 @@ func (m Model) batchView() string {
 
 	help := HelpStyle.Render("按 q 返回")
 	if m.batch.running {
-		help = HelpStyle.Render("处理中，请等待...")
+		spinner := string(spinnerFrames[m.batch.spinnerFrame])
+		help = HelpStyle.Render(spinner + " 处理中，请等待...")
 	}
 	return lipgloss.JoinVertical(lipgloss.Left, title, body.String(), help)
 }
