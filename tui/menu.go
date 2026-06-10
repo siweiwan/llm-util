@@ -56,8 +56,6 @@ func buildRulesMenu() list.Model {
 	items := []list.Item{
 		menuItem{title: "模式A", desc: "读取 Excel，批量调用百炼应用接口"},
 		menuItem{title: "模式B", desc: "读取文件，批量调用百炼应用接口"},
-		menuItem{title: "DIY 提问", desc: "n×m 规模：多问题 × 多文件"},
-		menuItem{title: "工作流调用", desc: "自定义业务参数调用百炼应用"},
 	}
 	l := list.New(items, itemDelegate{}, 0, len(items)*2)
 	l.SetShowTitle(false)
@@ -120,10 +118,6 @@ func (m Model) updateRulesMenu(msg tea.Msg) (tea.Model, tea.Cmd) {
 				target = ViewModeA
 			case 1:
 				target = ViewRuleFile
-			case 2:
-				target = ViewRuleDIY
-			case 3:
-				target = ViewRuleWorkflow
 			}
 			m.ruleDetail.reset(target)
 			m.view = ViewRuleDetail
