@@ -14,9 +14,11 @@
 # Dependency directories
 vendor/
 
-# IDE
+# IDE & Tools
 .idea/
 .vscode/
+.qoder/
+.claude/
 *.swp
 *.swo
 *~
@@ -29,8 +31,13 @@ Thumbs.db
 .env
 .env.local
 
-# Local Claude Code settings
-.claude/settings.local.json
+# Data files (generated during batch processing)
+data.xlsx
+process.xlsx
+workflow.xlsx
+
+# Generated templates
+template-*.xlsx
 
 # Large test data
 pdfs/
@@ -39,4 +46,6 @@ files/
 # Worktrees
 .worktrees/
 ~$*
-template-*.xlsx
+
+# Generated docs
+docs/superpowers/
