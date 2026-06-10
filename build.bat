@@ -2,13 +2,14 @@
 REM 程序名称，改成你想要的名字即可
 REM set BIN_NAME=llm-util-v0.0.1
 if "%BIN_NAME%"=="" set BIN_NAME=llm-util
+if "%APP_VERSION%"=="" set APP_VERSION=dev
 
 set GOOS=windows
 set GOARCH=amd64
-go build -ldflags "-s -w" -o "%BIN_NAME%.exe" main.go
+go build -ldflags "-s -w -X llm-util/conf.AppVersion=%APP_VERSION%" -o "%BIN_NAME%.exe" main.go
 
 if %ERRORLEVEL% equ 0 (
-    echo Built: %BIN_NAME%.exe
+    echo Built: %BIN_NAME%.exe (version=%APP_VERSION%)
 ) else (
     echo Build failed.
 )

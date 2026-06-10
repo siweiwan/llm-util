@@ -1,5 +1,8 @@
 package conf
 
+// AppVersion 应用版本号，可通过 -ldflags "-X llm-util/conf.AppVersion=vX.Y.Z" 注入
+var AppVersion = "dev"
+
 // Config 应用配置，所有可配置项集中管理
 type Config struct {
 	APIKey      string

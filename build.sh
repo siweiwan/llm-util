@@ -7,10 +7,11 @@ fi
 # 程序名称，改成你想要的名字即可
 # BIN_NAME=我的工具
 BIN_NAME=${BIN_NAME:-llm-util}
+APP_VERSION=${APP_VERSION:-dev}
 OUTPUT="${BIN_NAME}.exe"
 
 # 使用 ldflags 将 AK/SK 嵌入二进制（源码中不出现明文凭据）
-LD_FLAGS="-s -w"
+LD_FLAGS="-s -w -X llm-util/conf.AppVersion=$APP_VERSION"
 if [ -n "$ALIBABA_CLOUD_ACCESS_KEY_ID" ]; then
   LD_FLAGS="$LD_FLAGS -X 'llm-util/file.AccessKeyId=$ALIBABA_CLOUD_ACCESS_KEY_ID'"
 fi
@@ -19,4 +20,4 @@ if [ -n "$ALIBABA_CLOUD_ACCESS_KEY_SECRET" ]; then
 fi
 
 GOOS=windows GOARCH=amd64 go build -ldflags "$LD_FLAGS" -o "$OUTPUT" main.go
-echo "Built: $OUTPUT"
+echo "Built: $OUTPUT (version=$APP_VERSION)"
