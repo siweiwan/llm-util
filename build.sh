@@ -12,10 +12,10 @@ OUTPUT="${BIN_NAME}.exe"
 # 使用 ldflags 将 AK/SK 嵌入二进制（源码中不出现明文凭据）
 LD_FLAGS="-s -w"
 if [ -n "$ALIBABA_CLOUD_ACCESS_KEY_ID" ]; then
-  LD_FLAGS="$LD_FLAGS -X 'llm-util/file/qwen.AccessKeyId=$ALIBABA_CLOUD_ACCESS_KEY_ID'"
+  LD_FLAGS="$LD_FLAGS -X 'llm-util/file.AccessKeyId=$ALIBABA_CLOUD_ACCESS_KEY_ID'"
 fi
 if [ -n "$ALIBABA_CLOUD_ACCESS_KEY_SECRET" ]; then
-  LD_FLAGS="$LD_FLAGS -X 'llm-util/file/qwen.AccessKeySecret=$ALIBABA_CLOUD_ACCESS_KEY_SECRET'"
+  LD_FLAGS="$LD_FLAGS -X 'llm-util/file.AccessKeySecret=$ALIBABA_CLOUD_ACCESS_KEY_SECRET'"
 fi
 
 GOOS=windows GOARCH=amd64 go build -ldflags "$LD_FLAGS" -o "$OUTPUT" main.go
