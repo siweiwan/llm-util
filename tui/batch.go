@@ -180,7 +180,15 @@ func (m Model) updateBatch(msg tea.Msg) (tea.Model, tea.Cmd) {
 				return m, func() tea.Msg { return showTipMsg("当前目录没有 .xlsx 文件") }
 			}
 			m.batch.fileList.SetItems(items)
-			m.batch.fileList.SetSize(m.width-4, len(items)*2)
+			maxH := m.height - 6 // 预留 title/prompt/padding/help
+			itemsH := len(items) * 2
+			if itemsH > maxH {
+				itemsH = maxH
+			}
+			if itemsH < 2 {
+				itemsH = 2
+			}
+			m.batch.fileList.SetSize(m.width-4, itemsH)
 			m.batch.filePicker = true
 			return m, nil
 		}
@@ -264,7 +272,15 @@ func (m Model) batchView() string {
 	if m.batch.filePicker {
 		title := PanelTitleStyle.Render(m.batch.ruleName)
 		prompt := lipgloss.NewStyle().Foreground(Blue).Render("请选择要处理的 Excel 文件：")
-		m.batch.fileList.SetHeight(len(m.batch.fileList.Items()) * 2)
+		maxH := m.height - 6
+		itemsH := len(m.batch.fileList.Items()) * 2
+		if itemsH > maxH {
+			itemsH = maxH
+		}
+		if itemsH < 2 {
+			itemsH = 2
+		}
+		m.batch.fileList.SetHeight(itemsH)
 		body := lipgloss.NewStyle().Padding(1, 2).Render(m.batch.fileList.View())
 		help := HelpStyle.Render("↑/↓ 选择  enter 确认  esc 返回")
 		return lipgloss.JoinVertical(lipgloss.Left, title, prompt, body, help)
