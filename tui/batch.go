@@ -52,7 +52,7 @@ func newBatchPanel() batchPanel {
 	fl.KeyMap.NextPage.SetEnabled(false)
 	fl.KeyMap.PrevPage.SetEnabled(false)
 
-	return batchPanel{progress: p, poolSize: 10, fileList: fl}
+	return batchPanel{progress: p, poolSize: 4, fileList: fl}
 }
 
 func (bp *batchPanel) reset() {
@@ -63,7 +63,7 @@ func (bp *batchPanel) reset() {
 	bp.skipped = 0
 	bp.running = false
 	bp.filename = ""
-	bp.poolSize = 10
+	bp.poolSize = 4
 	bp.filePicker = false
 	bp.tickID++
 }

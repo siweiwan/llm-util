@@ -20,6 +20,7 @@ var (
 	ErrorStyle       = lipgloss.NewStyle().Foreground(Red)
 	InfoStyle        = lipgloss.NewStyle().Foreground(Blue)
 	WarnStyle        = lipgloss.NewStyle().Foreground(Yellow)
+	DimStyle         = lipgloss.NewStyle().Foreground(Dim)
 	PanelTitleStyle  = lipgloss.NewStyle().Bold(true).Foreground(Dark).Background(Accent).Padding(0, 1)
 	SelectedItemStyle = lipgloss.NewStyle().Foreground(Dark).Background(Accent).Padding(0, 1)
 	NormalItemStyle   = lipgloss.NewStyle().Padding(0, 1)

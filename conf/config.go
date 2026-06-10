@@ -12,7 +12,7 @@ type Config struct {
 func DefaultConfig() *Config {
 	return &Config{
 		WorkspaceID: "llm-shwq55idtv5plnag",
-		PoolSize:    10,
+		PoolSize:    4,
 	}
 }
 

@@ -96,12 +96,13 @@ func (m Model) updateMainMenu(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 func (m Model) mainMenuView() string {
 	title := TitleStyle.Render("LLM Util — 百炼批量查询工具")
+	note := DimStyle.Render("仅支持 Agent 1.0")
 	menu := MenuListStyle.Render(m.mainMenu.View())
 	help := HelpStyle.Render("↑/↓ 选择  enter 确认  q 退出")
 	if m.tip != "" {
 		help += "\n" + WarnStyle.Render(m.tip)
 	}
-	return lipgloss.JoinVertical(lipgloss.Center, title, menu, help)
+	return lipgloss.JoinVertical(lipgloss.Center, title, note, menu, help)
 }
 
 func (m Model) updateRulesMenu(msg tea.Msg) (tea.Model, tea.Cmd) {
