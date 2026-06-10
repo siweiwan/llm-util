@@ -35,14 +35,14 @@ const helpModeA = `# 模式A — 批量请求
 
 `
 
-const helpPdfBatch = `# PDF 批量提问
+const helpModeB = `# 模式B — 批量请求
 
-对 **pdfs/** 目录下所有 PDF 文件提问同一个问题。
+读取文件，批量调用百炼应用接口。
 
 ## 使用步骤
 
 1. 在程序目录下创建 **pdfs/** 文件夹
-2. 将要提问的 PDF 文件放入该文件夹
+2. 将要处理的文件放入该文件夹
 3. 选择此规则，输入问题
 4. 结果保存至 **{问题前20字}.xlsx**
 
@@ -137,8 +137,8 @@ func (p *ruleDetailPanel) reset(rule View) {
 		p.ruleName = "模式A"
 		p.markdown = helpModeA
 	case ViewRulePDF:
-		p.ruleName = "PDF 批量提问"
-		p.markdown = helpPdfBatch
+		p.ruleName = "模式B"
+		p.markdown = helpModeB
 	case ViewRuleDIY:
 		p.ruleName = "DIY 提问"
 		p.markdown = helpDiyQuery
@@ -182,10 +182,14 @@ func (m Model) updateRuleDetail(msg tea.Msg) (tea.Model, tea.Cmd) {
 					p.view = ruleDetailHelp
 					return m, nil
 				case 1:
-					filename, err := generateTemplate(p.templateLetter())
+					filename, msg, err := generateTemplate(p.templateLetter())
 					if err == nil {
 						p.saved = true
-						p.templateMsg = SuccessStyle.Render("✅ 已生成: " + filename)
+						if msg != "" {
+							p.templateMsg = InfoStyle.Render(msg)
+						} else {
+							p.templateMsg = SuccessStyle.Render("✅ 已生成: " + filename)
+						}
 					}
 					return m, nil
 				case 2:
@@ -241,9 +245,22 @@ func (m Model) ruleDetailView() string {
 	return ""
 }
 
-func generateTemplate(letter string) (string, error) {
+func generateTemplate(letter string) (filename string, msg string, err error) {
+	switch letter {
+	case "B":
+		return "", "ℹ️  模式B 无需模板文件，将文件放入 pdfs/ 目录即可", nil
+	case "C":
+		return generateDIYTemplate()
+	case "D":
+		return generateWorkflowTemplate()
+	default:
+		return generateModeATemplate()
+	}
+}
+
+func generateModeATemplate() (string, string, error) {
 	now := time.Now()
-	filename := fmt.Sprintf("template-%s-%s.xlsx", letter, now.Format("20060102150405"))
+	filename := fmt.Sprintf("template-A-%s.xlsx", now.Format("20060102150405"))
 
 	f := excelize.NewFile()
 	defer f.Close()
@@ -266,5 +283,58 @@ func generateTemplate(letter string) (string, error) {
 		ActivePane:  "bottomLeft",
 	})
 
-	return filename, f.SaveAs(filename)
+	return filename, "", f.SaveAs(filename)
+}
+
+func generateDIYTemplate() (string, string, error) {
+	now := time.Now()
+	filename := fmt.Sprintf("template-C-%s.xlsx", now.Format("20060102150405"))
+
+	f := excelize.NewFile()
+	defer f.Close()
+
+	headerStyle, _ := f.NewStyle(&excelize.Style{
+		Font:      &excelize.Font{Bold: true, Size: 11, Color: "#FFFFFF"},
+		Fill:      excelize.Fill{Type: "pattern", Color: []string{"#06B6D4"}, Pattern: 1},
+		Alignment: &excelize.Alignment{Horizontal: "center"},
+	})
+	f.SetSheetRow("Sheet1", "A1", &[]string{"问题", "文件名", "回答"})
+	f.SetCellStyle("Sheet1", "A1", "C1", headerStyle)
+	f.SetColWidth("Sheet1", "A", "A", 40)
+	f.SetColWidth("Sheet1", "B", "B", 30)
+	f.SetColWidth("Sheet1", "C", "C", 40)
+	f.SetPanes("Sheet1", &excelize.Panes{
+		Freeze:      true,
+		YSplit:      1,
+		TopLeftCell: "A2",
+		ActivePane:  "bottomLeft",
+	})
+
+	return filename, "", f.SaveAs(filename)
+}
+
+func generateWorkflowTemplate() (string, string, error) {
+	now := time.Now()
+	filename := fmt.Sprintf("template-D-%s.xlsx", now.Format("20060102150405"))
+
+	f := excelize.NewFile()
+	defer f.Close()
+
+	headerStyle, _ := f.NewStyle(&excelize.Style{
+		Font:      &excelize.Font{Bold: true, Size: 11, Color: "#FFFFFF"},
+		Fill:      excelize.Fill{Type: "pattern", Color: []string{"#06B6D4"}, Pattern: 1},
+		Alignment: &excelize.Alignment{Horizontal: "center"},
+	})
+	f.SetSheetRow("Sheet1", "A1", &[]string{"question", "answer", "参数1", "参数2"})
+	f.SetCellStyle("Sheet1", "A1", "D1", headerStyle)
+	f.SetColWidth("Sheet1", "A", "B", 40)
+	f.SetColWidth("Sheet1", "C", "D", 20)
+	f.SetPanes("Sheet1", &excelize.Panes{
+		Freeze:      true,
+		YSplit:      1,
+		TopLeftCell: "A2",
+		ActivePane:  "bottomLeft",
+	})
+
+	return filename, "", f.SaveAs(filename)
 }

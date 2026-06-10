@@ -242,7 +242,7 @@ func ruleName(v View) string {
 	case ViewModeA:
 		return "模式A"
 	case ViewRulePDF:
-		return "规则2 · PDF 批量提问"
+		return "模式B"
 	case ViewRuleDIY:
 		return "规则3 · DIY 提问"
 	case ViewRuleWorkflow:
