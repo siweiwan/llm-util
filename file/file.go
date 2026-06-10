@@ -22,11 +22,15 @@ import (
 const (
 	EndpointURL = "bailian.cn-beijing.aliyuncs.com"
 
-	// 轮询间隔与限流等待
-	pollInterval    = 3 * time.Second
-	throttleWait    = 15 * time.Second
-	maxPollAttempts = 120 // 最长等待约 6 分钟
+	// 限流等待
+	throttleWait = 15 * time.Second
 )
+
+// pollPhase 定义轮询阶段：每个阶段有独立的间隔和次数
+type pollPhase struct {
+	interval time.Duration
+	attempts int
+}
 
 // 可通过 -ldflags -X 在编译时注入，为空时回退到环境变量
 var (
@@ -257,24 +261,42 @@ func registerFile(leaseId string) (string, error) {
 	return *resp.Body.Data.FileId, nil
 }
 
-// waitReady 轮询文件状态直到就绪或失败
+// waitReady 轮询文件状态直到就绪或失败（渐进退避，总等待约 21 分钟）
+//
+// 三个阶段：
+//   - 2s × 30 次 = 60s  （快速处理的小文件）
+//   - 5s × 60 次 = 5min （中等文件）
+//   - 10s × 90 次 = 15min（大文件或高峰时段）
 func waitReady(fileId string) error {
-	for i := 0; i < maxPollAttempts; i++ {
-		status, err := DescribeFileStatus(fileId)
-		if err != nil {
-			return err
-		}
+	phases := []pollPhase{
+		{interval: 2 * time.Second, attempts: 30},
+		{interval: 5 * time.Second, attempts: 60},
+		{interval: 10 * time.Second, attempts: 90},
+	}
 
-		switch status {
-		case StatusFileReady, StatusParseSuccess:
-			return nil
-		case StatusParseFailed, StatusSafeCheckFailed, StatusIndexBuildFailed:
-			return fmt.Errorf("文件处理失败，状态: %s", status)
-		case StatusFileExpired:
-			return fmt.Errorf("文件已过期")
-		}
+	for _, phase := range phases {
+		for i := 0; i < phase.attempts; i++ {
+			status, err := DescribeFileStatus(fileId)
+			if err != nil {
+				return err
+			}
 
-		time.Sleep(pollInterval)
+			switch status {
+			case StatusFileReady, StatusParseSuccess:
+				return nil
+			case StatusParseFailed, StatusSafeCheckFailed, StatusIndexBuildFailed:
+				return fmt.Errorf("文件处理失败，状态: %s", status)
+			case StatusFileExpired:
+				return fmt.Errorf("文件已过期")
+			case statusThrottled:
+				// 限流：等待后重试，不消耗本轮次数
+				time.Sleep(throttleWait)
+				i--
+				continue
+			}
+
+			time.Sleep(phase.interval)
+		}
 	}
 	return fmt.Errorf("等待文件就绪超时")
 }
@@ -302,10 +324,9 @@ func DescribeFileStatus(fileId string) (string, error) {
 		return "", fmt.Errorf("查询文件状态返回Body为空")
 	}
 
-	// 限流处理：状态码 429 时等待后重试
+	// 限流处理：状态码 429 时返回特殊标记，由 waitReady 处理重试
 	if resp.Body.Status != nil && *resp.Body.Status == "429" {
-		time.Sleep(throttleWait)
-		return DescribeFileStatus(fileId)
+		return statusThrottled, nil
 	}
 
 	if resp.Body.Data == nil || resp.Body.Data.Status == nil {

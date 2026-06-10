@@ -21,6 +21,9 @@ const (
 	StatusIndexDeleted      = "INDEX_DELETED"         // 文件索引已删除
 	StatusFileReady         = "FILE_IS_READY"         // 文件准备完毕（SESSION_FILE 终态）
 	StatusFileExpired       = "FILE_EXPIRED"          // 文件过期
+
+	// statusThrottled 是内部哨兵值，表示被限流（429），不会暴露给外部
+	statusThrottled = "__THROTTLED__"
 )
 
 // Parser 解析器类型

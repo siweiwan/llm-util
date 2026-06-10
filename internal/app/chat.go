@@ -7,6 +7,7 @@ import (
 	"llm-util/conf"
 	uploadfile "llm-util/file"
 	"log/slog"
+	"time"
 )
 
 // newClient 基于当前配置创建百炼 API 客户端
@@ -49,13 +50,27 @@ func (a *App) SendRequest(prompt string) (string, error) {
 	return resp.Output.Text, nil
 }
 
-// SendRequestWithFile 上传文件后带文件提问
+const maxUploadRetries = 2 // 1 次初始 + 1 次重试
+
+// SendRequestWithFile 上传文件后带文件提问，上传失败时自动重试 1 次
 func (a *App) SendRequestWithFile(prompt, filePath string) (string, error) {
 	slog.Info("SendRequestWithFile", "prompt", prompt, "file", filePath)
-	fileId, err := uploadfile.UploadFile(filePath)
+
+	var fileId string
+	var err error
+	for attempt := 1; attempt <= maxUploadRetries; attempt++ {
+		fileId, err = uploadfile.UploadFile(filePath)
+		if err == nil {
+			break
+		}
+		slog.Error("SendRequestWithFile upload failed", "file", filePath, "attempt", attempt, "err", err)
+		if attempt < maxUploadRetries {
+			slog.Info("重试上传", "file", filePath, "next_attempt", attempt+1)
+			time.Sleep(3 * time.Second) // 重试前等待
+		}
+	}
 	if err != nil {
-		slog.Error("SendRequestWithFile upload failed", "file", filePath, "err", err)
-		return "", fmt.Errorf("上传文件失败: %w", err)
+		return "", fmt.Errorf("上传文件失败(已重试%d次): %w", maxUploadRetries-1, err)
 	}
 	slog.Info("文件上传成功", "fileId", fileId)
 

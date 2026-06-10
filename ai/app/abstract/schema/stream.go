@@ -18,9 +18,9 @@ package schema
 
 import (
 	"container/list"
-	"llm-util/ai/app/abstract/utils/safe"
 	"errors"
 	"io"
+	"llm-util/ai/app/abstract/utils/safe"
 	"reflect"
 	"runtime/debug"
 	"sync"
