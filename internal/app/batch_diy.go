@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"llm-util/tui"
 	"llm-util/util/file"
+	"log/slog"
 	"os"
 	"sync"
 
@@ -12,6 +13,7 @@ import (
 )
 
 func (a *App) RunDIYQueryRule(poolSize int, progress chan<- tui.ProgressMsg) error {
+	slog.Info("RunDIYQueryRule start", "poolSize", poolSize)
 	if poolSize <= 0 {
 		poolSize = 10
 	} else if poolSize > 200 {
@@ -79,9 +81,11 @@ func (a *App) RunDIYQueryRule(poolSize int, progress chan<- tui.ProgressMsg) err
 
 			answer, err := a.SendRequestWithFile(input, filePath)
 			if err != nil {
+				slog.Error("RunDIYQueryRule task failed", "row", i, "file", fileName, "err", err)
 				progress <- tui.ProgressMsg{Index: i, Total: totalRows, Filename: fileName, Status: "error"}
 				return
 			}
+			slog.Info("RunDIYQueryRule task done", "row", i, "file", fileName, "response_len", len(answer))
 
 			mu.Lock()
 			excelFile.SetCellValue("Sheet1", fmt.Sprintf("C%d", i+1), answer)

@@ -3,6 +3,7 @@ package file
 import (
 	"fmt"
 	"io"
+	"log/slog"
 	"net/http"
 	"os"
 	"strconv"
@@ -81,36 +82,47 @@ func GetFileInfo(filePath string) (os.FileInfo, string, error) {
 //  4. AddFile 注册文件到百炼
 //  5. 轮询等待文件就绪
 func UploadFile(filePath string) (string, error) {
+	slog.Info("UploadFile start", "file", filePath)
 	// Step 1: 文件信息
 	fileInfo, md5, err := GetFileInfo(filePath)
 	if err != nil {
+		slog.Error("UploadFile GetFileInfo failed", "file", filePath, "err", err)
 		return "", err
 	}
 
 	fileName := fileInfo.Name()
 	sizeInBytes := strconv.FormatInt(fileInfo.Size(), 10)
+	slog.Info("文件信息", "name", fileName, "size", fileInfo.Size(), "md5", md5)
 
 	// Step 2: 申请上传租约
 	leaseResp, err := applyLease(fileName, md5, sizeInBytes)
 	if err != nil {
+		slog.Error("UploadFile applyLease failed", "file", fileName, "err", err)
 		return "", fmt.Errorf("申请上传租约失败: %w", err)
 	}
+	slog.Info("租约申请成功", "leaseId", leaseResp.Data.FileUploadLeaseId)
 
 	// Step 3: 上传文件到 OSS
 	if err := uploadToOSS(filePath, leaseResp.Data.Param); err != nil {
+		slog.Error("UploadFile uploadToOSS failed", "file", fileName, "err", err)
 		return "", fmt.Errorf("上传文件到OSS失败: %w", err)
 	}
+	slog.Info("OSS 上传完成")
 
 	// Step 4: 注册文件
 	fileId, err := registerFile(leaseResp.Data.FileUploadLeaseId)
 	if err != nil {
+		slog.Error("UploadFile registerFile failed", "leaseId", leaseResp.Data.FileUploadLeaseId, "err", err)
 		return "", fmt.Errorf("注册文件失败: %w", err)
 	}
+	slog.Info("文件注册成功", "fileId", fileId)
 
 	// Step 5: 轮询等待文件就绪
 	if err := waitReady(fileId); err != nil {
+		slog.Error("UploadFile waitReady failed", "fileId", fileId, "err", err)
 		return "", fmt.Errorf("等待文件就绪失败: %w", err)
 	}
+	slog.Info("文件就绪", "fileId", fileId)
 
 	return fileId, nil
 }

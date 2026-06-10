@@ -49,3 +49,6 @@ files/
 
 # Generated docs
 docs/superpowers/
+
+# Log files
+logs/

@@ -3,6 +3,7 @@ package app
 import (
 	"fmt"
 	"llm-util/tui"
+	"log/slog"
 	path "path/filepath"
 	"sync"
 	"time"
@@ -12,6 +13,7 @@ import (
 )
 
 func (a *App) RunPdfBatchQuery(poolSize int, xlsxFile string, progress chan<- tui.ProgressMsg) error {
+	slog.Info("RunPdfBatchQuery start", "file", xlsxFile, "poolSize", poolSize)
 	if poolSize <= 0 {
 		poolSize = 10
 	} else if poolSize > 20 {
@@ -85,10 +87,12 @@ func (a *App) RunPdfBatchQuery(poolSize int, xlsxFile string, progress chan<- tu
 			now := time.Now().Format("2006-01-02 15:04:05")
 			mu.Lock()
 			if err != nil {
+				slog.Error("RunPdfBatchQuery task failed", "row", rowIdx, "prompt", req, "file", fp, "err", err)
 				file.SetCellValue("Sheet1", fmt.Sprintf("D%d", rowIdx+1), "失败")
 				file.SetCellValue("Sheet1", fmt.Sprintf("F%d", rowIdx+1), err.Error())
 				saveCounter++
 			} else {
+				slog.Info("RunPdfBatchQuery task done", "row", rowIdx, "prompt", req, "file", fp, "response_len", len(resp))
 				file.SetCellValue("Sheet1", fmt.Sprintf("C%d", rowIdx+1), resp)
 				file.SetCellValue("Sheet1", fmt.Sprintf("D%d", rowIdx+1), "完成")
 				file.SetCellValue("Sheet1", fmt.Sprintf("E%d", rowIdx+1), now)

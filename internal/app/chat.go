@@ -6,6 +6,7 @@ import (
 	"llm-util/ai/app/impl/bailian"
 	"llm-util/conf"
 	uploadfile "llm-util/file"
+	"log/slog"
 )
 
 // newClient 基于当前配置创建百炼 API 客户端
@@ -33,6 +34,7 @@ func (a *App) toMessages() []bailian.RequestMessage {
 
 // SendRequest 发送纯文本提问
 func (a *App) SendRequest(prompt string) (string, error) {
+	slog.Info("SendRequest", "prompt", prompt)
 	resp, err := a.newClient().CreateChatCompletion(context.TODO(), bailian.ChatCompletionRequest{
 		Input: &bailian.RequestInput{
 			Prompt:   prompt,
@@ -40,17 +42,22 @@ func (a *App) SendRequest(prompt string) (string, error) {
 		},
 	})
 	if err != nil {
+		slog.Error("SendRequest failed", "prompt", prompt, "err", err)
 		return "", err
 	}
+	slog.Info("SendRequest done", "response_len", len(resp.Output.Text))
 	return resp.Output.Text, nil
 }
 
 // SendRequestWithFile 上传文件后带文件提问
 func (a *App) SendRequestWithFile(prompt, filePath string) (string, error) {
+	slog.Info("SendRequestWithFile", "prompt", prompt, "file", filePath)
 	fileId, err := uploadfile.UploadFile(filePath)
 	if err != nil {
+		slog.Error("SendRequestWithFile upload failed", "file", filePath, "err", err)
 		return "", fmt.Errorf("上传文件失败: %w", err)
 	}
+	slog.Info("文件上传成功", "fileId", fileId)
 
 	resp, err := a.newClient().CreateChatCompletion(context.TODO(), bailian.ChatCompletionRequest{
 		Input: &bailian.RequestInput{
@@ -64,7 +71,9 @@ func (a *App) SendRequestWithFile(prompt, filePath string) (string, error) {
 		},
 	})
 	if err != nil {
+		slog.Error("SendRequestWithFile chat failed", "fileId", fileId, "err", err)
 		return "", err
 	}
+	slog.Info("SendRequestWithFile done", "fileId", fileId, "response_len", len(resp.Output.Text))
 	return resp.Output.Text, nil
 }

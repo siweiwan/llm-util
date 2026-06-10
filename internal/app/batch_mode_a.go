@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"llm-util/ai/app/impl/bailian"
 	"llm-util/tui"
+	"log/slog"
 	"sync"
 	"time"
 
@@ -13,6 +14,7 @@ import (
 )
 
 func (a *App) RunModeA(poolSize int, filename string, progress chan<- tui.ProgressMsg) error {
+	slog.Info("RunModeA start", "file", filename, "poolSize", poolSize)
 	if poolSize <= 0 {
 		poolSize = 10
 	} else if poolSize > 20 {
@@ -70,10 +72,12 @@ func (a *App) RunModeA(poolSize int, filename string, progress chan<- tui.Progre
 			now := time.Now().Format("2006-01-02 15:04:05")
 			mu.Lock()
 			if err != nil {
+				slog.Error("RunModeA task failed", "row", rowIdx, "prompt", req, "err", err)
 				file.SetCellValue("Sheet1", fmt.Sprintf("C%d", rowIdx+1), "失败")
 				file.SetCellValue("Sheet1", fmt.Sprintf("E%d", rowIdx+1), err.Error())
 				saveCounter++
 			} else {
+				slog.Info("RunModeA task done", "row", rowIdx, "prompt", req, "response_len", len(resp.Output.Text))
 				file.SetCellValue("Sheet1", fmt.Sprintf("B%d", rowIdx+1), resp.Output.Text)
 				file.SetCellValue("Sheet1", fmt.Sprintf("C%d", rowIdx+1), "完成")
 				file.SetCellValue("Sheet1", fmt.Sprintf("D%d", rowIdx+1), now)

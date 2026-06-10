@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"llm-util/ai/app/impl/bailian"
 	"llm-util/tui"
+	"log/slog"
 	"sync"
 
 	"github.com/panjf2000/ants/v2"
@@ -12,6 +13,7 @@ import (
 )
 
 func (a *App) RunWorkflowQueryRule(poolSize int, progress chan<- tui.ProgressMsg) error {
+	slog.Info("RunWorkflowQueryRule start", "poolSize", poolSize)
 	if poolSize <= 0 {
 		poolSize = 10
 	} else if poolSize > 200 {
@@ -79,6 +81,7 @@ func (a *App) RunWorkflowQueryRule(poolSize int, progress chan<- tui.ProgressMsg
 				},
 			})
 			if err != nil {
+				slog.Error("RunWorkflowQueryRule task failed", "row", iCopy, "prompt", question, "err", err)
 				progress <- tui.ProgressMsg{Index: iCopy, Total: totalRows, Filename: question, Status: "error"}
 				mu.Lock()
 				errCount++
@@ -86,6 +89,7 @@ func (a *App) RunWorkflowQueryRule(poolSize int, progress chan<- tui.ProgressMsg
 				return
 			}
 
+			slog.Info("RunWorkflowQueryRule task done", "row", iCopy, "prompt", question, "response_len", len(response.Output.Text))
 			mu.Lock()
 			file.SetCellValue("Sheet1", fmt.Sprintf("B%d", iCopy+1), response.Output.Text)
 			mu.Unlock()
