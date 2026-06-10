@@ -41,10 +41,10 @@ type Model struct {
 	mainMenu  list.Model
 	rulesMenu list.Model
 
-	OnRunModeA     func(poolSize int, filename string, progress chan<- ProgressMsg) error
-	OnRunPDF       func(poolSize int, question string, progress chan<- ProgressMsg) error
-	OnRunDIY       StartBatchFunc
-	OnRunWorkflow  StartBatchFunc
+	OnRunModeA    func(poolSize int, filename string, progress chan<- ProgressMsg) error
+	OnRunPDF      func(poolSize int, xlsxFile string, progress chan<- ProgressMsg) error
+	OnRunDIY      StartBatchFunc
+	OnRunWorkflow StartBatchFunc
 
 	OnSaveSettings func(apiKey, appId string, poolSize int) error
 

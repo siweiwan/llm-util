@@ -3,128 +3,110 @@ package app
 import (
 	"fmt"
 	"llm-util/tui"
-	"llm-util/util"
-	"llm-util/util/file"
-	"os"
-	fpath "path/filepath"
+	path "path/filepath"
 	"sync"
+	"time"
 
 	"github.com/panjf2000/ants/v2"
 	"github.com/xuri/excelize/v2"
 )
 
-func (a *App) RunPdfBatchQuery(poolSize int, question string, progress chan<- tui.ProgressMsg) error {
+func (a *App) RunPdfBatchQuery(poolSize int, xlsxFile string, progress chan<- tui.ProgressMsg) error {
 	if poolSize <= 0 {
 		poolSize = 10
-	} else if poolSize > 200 {
-		poolSize = 200
+	} else if poolSize > 20 {
+		poolSize = 20
 	}
 
-	dir, err := os.Getwd()
+	file, err := excelize.OpenFile(xlsxFile)
 	if err != nil {
-		return fmt.Errorf("获取当前目录失败: %w", err)
+		return fmt.Errorf("打开文件失败: %w", err)
 	}
-	files, err := file.GetFiles(dir+"/pdfs", "pdf")
+	defer file.Close()
+
+	rows, err := file.GetRows("Sheet1")
 	if err != nil {
-		return fmt.Errorf("读取文件失败: %w", err)
+		return fmt.Errorf("读取行数据失败: %w", err)
+	}
+	if len(rows) < 2 {
+		return fmt.Errorf("至少需要一行标题和一行数据")
 	}
 
-	input := question
+	// Read directory path from G1 (stored by template generator)
+	fileDir, _ := file.GetCellValue("Sheet1", "G1")
 
-	filename := util.GetFirstXChars(input, 20) + ".xlsx"
-	processedMD5 := make(map[string]bool)
-	var f *excelize.File
-	currentRow := 3
-
-	if _, err := os.Stat(filename); err == nil {
-		existingFile, err := excelize.OpenFile(filename)
-		if err == nil {
-			existingQuestion, _ := existingFile.GetCellValue("Sheet1", "A1")
-			if existingQuestion == input {
-				f = existingFile
-
-				rows, _ := existingFile.GetRows("Sheet1")
-				for rowIdx, row := range rows {
-					if rowIdx < 2 {
-						continue
-					}
-					if len(row) >= 2 {
-						processedMD5[row[1]] = true
-					}
-				}
-				currentRow = len(rows) + 1
-			} else {
-				filename = util.GetFirstXChars(input, 20) + "_new" + ".xlsx"
-			}
-		}
-	}
-
-	if f == nil {
-		f = excelize.NewFile()
-		f.SetCellValue("Sheet1", "A1", input)
-		headers := []string{"文件名", "MD5", "回答内容"}
-		for col, header := range headers {
-			cell, _ := excelize.CoordinatesToCellName(col+1, 2)
-			f.SetCellValue("Sheet1", cell, header)
-		}
-	}
-
-	defer func() {
-		_ = f.SaveAs(filename)
-		_ = f.Close()
-	}()
-
-	var pendingFiles []string
-	for _, filePath := range files {
-		md5, err := file.CalculateMD5(filePath)
-		if err == nil && processedMD5[md5] {
-			continue
-		}
-		pendingFiles = append(pendingFiles, filePath)
-	}
-
-	totalFiles := len(pendingFiles)
+	totalRows := len(rows) - 1
 
 	var wg sync.WaitGroup
-	var mu sync.Mutex
-
+	mu := sync.Mutex{}
+	saveCounter := 0
 	pool, _ := ants.NewPool(poolSize)
 	defer pool.Release()
 
-	for i, filePath := range pendingFiles {
+	for i, row := range rows {
+		if i == 0 {
+			continue
+		}
+
+		if len(row) < 2 {
+			continue
+		}
+
+		request := row[0]
+		fileName := row[1]
+
+		if request == "" || fileName == "" {
+			continue
+		}
+
+		// Construct full file path: dir from G1 + fileName from B column
+		filePath := fileName
+		if fileDir != "" {
+			filePath = path.Join(fileDir, fileName)
+		}
+
+		// Skip if status column (D) already has value (断点续传)
+		if len(row) >= 4 && row[3] != "" {
+			progress <- tui.ProgressMsg{Index: i, Total: totalRows, Filename: request, Status: "skip"}
+			continue
+		}
+
+		progress <- tui.ProgressMsg{Index: i, Total: totalRows, Filename: request, Status: "processing"}
+
 		wg.Add(1)
-		filePath := filePath
-		i := i
-
-		progress <- tui.ProgressMsg{Index: i, Total: totalFiles, Filename: fpath.Base(filePath), Status: "processing"}
-
 		pool.Submit(func() {
 			defer wg.Done()
+			rowIdx := i
+			req := request
+			fp := filePath
 
-			answer, err := a.SendRequestWithFile(input, filePath)
-			if err != nil {
-				progress <- tui.ProgressMsg{Index: i, Total: totalFiles, Filename: fpath.Base(filePath), Status: "error"}
-				return
-			}
+			resp, err := a.SendRequestWithFile(req, fp)
 
-			fileName := file.RemoveFileExtension(fpath.Base(filePath))
-			md5, _ := file.CalculateMD5(filePath)
-
-			data := []string{fileName, md5, answer}
-
-			for col, value := range data {
-				cell, _ := excelize.CoordinatesToCellName(col+1, currentRow)
-				_ = f.SetCellValue("Sheet1", cell, value)
-			}
-
+			now := time.Now().Format("2006-01-02 15:04:05")
 			mu.Lock()
-			currentRow++
-			_ = f.SaveAs(filename)
+			if err != nil {
+				file.SetCellValue("Sheet1", fmt.Sprintf("D%d", rowIdx+1), "失败")
+				file.SetCellValue("Sheet1", fmt.Sprintf("F%d", rowIdx+1), err.Error())
+				saveCounter++
+			} else {
+				file.SetCellValue("Sheet1", fmt.Sprintf("C%d", rowIdx+1), resp)
+				file.SetCellValue("Sheet1", fmt.Sprintf("D%d", rowIdx+1), "完成")
+				file.SetCellValue("Sheet1", fmt.Sprintf("E%d", rowIdx+1), now)
+				saveCounter++
+			}
+			if saveCounter >= 10 {
+				_ = file.Save()
+				saveCounter = 0
+			}
 			mu.Unlock()
-
-			progress <- tui.ProgressMsg{Index: i, Total: totalFiles, Filename: fpath.Base(filePath), Status: "done"}
+			if err != nil {
+				progress <- tui.ProgressMsg{Index: rowIdx, Total: totalRows, Filename: req, Status: "error"}
+			} else {
+				progress <- tui.ProgressMsg{Index: rowIdx, Total: totalRows, Filename: req, Status: "done"}
+			}
 		})
 	}
+
 	wg.Wait()
-	return nil
+	return file.Save()
 }

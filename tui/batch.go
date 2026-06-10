@@ -7,27 +7,24 @@ import (
 
 	"github.com/charmbracelet/bubbles/list"
 	"github.com/charmbracelet/bubbles/progress"
-	"github.com/charmbracelet/bubbles/textarea"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 )
 
 type batchPanel struct {
-	progress    progress.Model
-	logs        []batchLogEntry
-	total       int
-	done        int
-	errors      int
-	skipped     int
-	running     bool
-	poolSize    int
-	ruleName    string
-	filename    string
-	ch          chan ProgressMsg
-	configuring bool
-	cfgTextarea textarea.Model
-	filePicker  bool
-	fileList    list.Model
+	progress   progress.Model
+	logs       []batchLogEntry
+	total      int
+	done       int
+	errors     int
+	skipped    int
+	running    bool
+	poolSize   int
+	ruleName   string
+	filename   string
+	ch         chan ProgressMsg
+	filePicker bool
+	fileList   list.Model
 }
 
 type batchLogEntry struct {
@@ -41,11 +38,6 @@ func newBatchPanel() batchPanel {
 		progress.WithGradient("#06B6D4", "#22C55E"),
 		progress.WithoutPercentage(),
 	)
-	ta := textarea.New()
-	ta.Placeholder = "输入要提问的问题..."
-	ta.SetHeight(3)
-	ta.ShowLineNumbers = false
-	ta.CharLimit = 4000
 
 	fl := list.New([]list.Item{}, itemDelegate{}, 0, 10)
 	fl.SetShowTitle(false)
@@ -57,7 +49,7 @@ func newBatchPanel() batchPanel {
 	fl.KeyMap.NextPage.SetEnabled(false)
 	fl.KeyMap.PrevPage.SetEnabled(false)
 
-	return batchPanel{progress: p, poolSize: 10, cfgTextarea: ta, fileList: fl}
+	return batchPanel{progress: p, poolSize: 10, fileList: fl}
 }
 
 func (bp *batchPanel) reset() {
@@ -69,9 +61,7 @@ func (bp *batchPanel) reset() {
 	bp.running = false
 	bp.filename = ""
 	bp.poolSize = 10
-	bp.configuring = false
 	bp.filePicker = false
-	bp.cfgTextarea.Reset()
 }
 
 type batchStartMsg struct{}
@@ -121,7 +111,12 @@ func (m Model) updateBatch(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.batch.ch = make(chan ProgressMsg, 200)
 				go func() {
 					defer close(m.batch.ch)
-					_ = m.OnRunModeA(m.batch.poolSize, m.batch.filename, m.batch.ch)
+					switch m.view {
+					case ViewRulePDF:
+						_ = m.OnRunPDF(m.batch.poolSize, m.batch.filename, m.batch.ch)
+					default:
+						_ = m.OnRunModeA(m.batch.poolSize, m.batch.filename, m.batch.ch)
+					}
 				}()
 				return m, listenProgress(m.batch.ch)
 			case "esc":
@@ -132,35 +127,6 @@ func (m Model) updateBatch(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		var cmd tea.Cmd
 		m.batch.fileList, cmd = m.batch.fileList.Update(msg)
-		return m, cmd
-	}
-
-	if m.batch.configuring {
-		switch msg := msg.(type) {
-		case tea.KeyMsg:
-			switch msg.String() {
-			case "enter":
-				input := strings.TrimSpace(m.batch.cfgTextarea.Value())
-				if input == "" {
-					return m, nil
-				}
-				m.batch.configuring = false
-				m.batch.running = true
-				m.batch.ch = make(chan ProgressMsg, 200)
-				prompt := input
-				go func() {
-					defer close(m.batch.ch)
-					_ = m.OnRunPDF(m.batch.poolSize, prompt, m.batch.ch)
-				}()
-				return m, listenProgress(m.batch.ch)
-			case "esc":
-				m.batch.configuring = false
-				m.view = ViewRulesMenu
-				return m, nil
-			}
-		}
-		var cmd tea.Cmd
-		m.batch.cfgTextarea, cmd = m.batch.cfgTextarea.Update(msg)
 		return m, cmd
 	}
 
@@ -177,7 +143,8 @@ func (m Model) updateBatch(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case batchStartMsg:
 		m.batch.ruleName = ruleName(m.view)
 
-		if m.view == ViewModeA {
+		// Mode A and Mode B both use file picker
+		if m.view == ViewModeA || m.view == ViewRulePDF {
 			items := scanXlsxFiles()
 			if len(items) == 0 {
 				return m, func() tea.Msg { return showTipMsg("当前目录没有 .xlsx 文件") }
@@ -186,11 +153,6 @@ func (m Model) updateBatch(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.batch.fileList.SetSize(m.width-4, len(items)*2)
 			m.batch.filePicker = true
 			return m, nil
-		}
-
-		if m.view == ViewRulePDF {
-			m.batch.configuring = true
-			return m, m.batch.cfgTextarea.Focus()
 		}
 
 		m.batch.running = true
@@ -244,9 +206,9 @@ func ruleName(v View) string {
 	case ViewRulePDF:
 		return "模式B"
 	case ViewRuleDIY:
-		return "规则3 · DIY 提问"
+		return "DIY 提问"
 	case ViewRuleWorkflow:
-		return "规则4 · 工作流调用"
+		return "工作流调用"
 	}
 	return "批量处理"
 }
@@ -259,20 +221,6 @@ func (m Model) batchView() string {
 		body := lipgloss.NewStyle().Padding(1, 2).Render(m.batch.fileList.View())
 		help := HelpStyle.Render("↑/↓ 选择  enter 确认  esc 返回")
 		return lipgloss.JoinVertical(lipgloss.Left, title, prompt, body, help)
-	}
-
-	if m.batch.configuring {
-		title := PanelTitleStyle.Render(m.batch.ruleName)
-		promptText := "请输入要提问的问题："
-		prompt := lipgloss.NewStyle().Foreground(Blue).Render(promptText)
-		m.batch.cfgTextarea.SetWidth(m.width - 4)
-		help := HelpStyle.Render("enter 确认  esc 返回")
-		return lipgloss.JoinVertical(lipgloss.Left,
-			title,
-			prompt,
-			m.batch.cfgTextarea.View(),
-			help,
-		)
 	}
 
 	title := PanelTitleStyle.Render(m.batch.ruleName)
