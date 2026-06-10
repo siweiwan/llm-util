@@ -11,6 +11,8 @@ const (
 	apiKey = "your-api-key"
 )
 
+func ptrBool(v bool) *bool { return &v }
+
 func TestCreateChatCompletion(t *testing.T) {
 	client := NewClientWithAppIDAPIKey("1f03bff2a0f74eae9e1b553f980cfdd6", apiKey)
 	response, err := client.CreateChatCompletion(context.TODO(), ChatCompletionRequest{
@@ -66,8 +68,8 @@ func TestCreateChatCompletionStreamBizParams(t *testing.T) {
 			},
 		},
 		Parameters: &RequestParameters{
-			IncrementalOutput: true, // 由于要自行拼接响应，选择增量输出模式
-			HasThoughts:       true, // 是否展示思考过程
+			IncrementalOutput: ptrBool(true), // 由于要自行拼接响应，选择增量输出模式
+			HasThoughts:       true,          // 是否展示思考过程
 		},
 	})
 	if err != nil {

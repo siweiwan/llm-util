@@ -8,8 +8,9 @@ import (
 
 // ChatCompletionRequest 百炼应用调用body结构
 type ChatCompletionRequest struct {
-	Input      *RequestInput      `json:"input"`
-	Parameters *RequestParameters `json:"parameters,omitempty"`
+	Input      *RequestInput          `json:"input"`
+	Parameters *RequestParameters     `json:"parameters,omitempty"`
+	Debug      map[string]interface{} `json:"debug,omitempty"`
 }
 
 func NewSimpleQuestion(question string) ChatCompletionRequest {
@@ -85,12 +86,16 @@ type RequestInput struct {
 	// > 可以是多个，每个图片链接之间通过英文逗号分隔。
 	// > 通过HTTP调用时，请将 image_list 放入 input 对象中。
 	ImageList []string `json:"image_list,omitempty"`
+	// 文件 URL 列表。指定 file_list 传入文件（文档、图片、音视频），启用文件问答功能。
+	// 应用内需开启预解析文件开关。
+	// > 通过HTTP调用时，请将 file_list 放入 input 对象中。
+	FileList []string `json:"file_list,omitempty"`
 }
 
 type RequestParameters struct {
 	// 在流式输出模式下是否开启增量输出。
 	// 通过HTTP调用时，请将incremental_output放入parameters对象中。
-	IncrementalOutput bool `json:"incremental_output"`
+	IncrementalOutput *bool `json:"incremental_output,omitempty"`
 	// 工作流应用的流式输出模式。具体使用方法请参考流式输出。
 	// 参数值及使用方法如下：
 	// `full_thoughts`（默认值）：
@@ -110,7 +115,17 @@ type RequestParameters struct {
 	HasThoughts bool `json:"has_thoughts,omitempty"`
 	// 用于配置与RAG相关的参数。包括但不限于对指定的知识库或文档进行检索。详细用法和规则请参见检索知识库。
 	// 通过HTTP调用时，请将 rag_options 放入 parameters 对象中。
-	RagOptions []RequestInputRagOptions `json:"rag_options,omitempty"`
+	RagOptions *RequestInputRagOptions `json:"rag_options,omitempty"`
+	// 深度思考模式开关。用于在深度思考模型中切换思考模式和非思考模式。
+	// False（默认）：非思考模式，直接返回最终答案。
+	// True：启用思考模式，模型先输出思考过程，再返回最终答案。
+	// > 开启 enable_thinking 时，必须同时将 has_thoughts 设为 True 才能获取思考过程。
+	// > 通过HTTP调用时，请将 enable_thinking 放入 parameters 对象中。
+	EnableThinking bool `json:"enable_thinking,omitempty"`
+	// 模型名称。API 调用时，可通过此参数传递本次调用使用的模型名称。
+	// 当通过 API 传递的 model_id 与控制台配置不同时，以 API 参数值为准。
+	// > 通过HTTP调用时，请将 model_id 放入 parameters 对象中。
+	ModelID string `json:"model_id,omitempty"`
 }
 
 type RequestInputRagOptions struct {
@@ -280,7 +295,7 @@ func (c *Client) CreateChatCompletion(ctx context.Context, request ChatCompletio
 ) (response ChatCompletionResponse, err error) {
 
 	if request.Parameters == nil {
-		request.Parameters = &RequestParameters{IncrementalOutput: false}
+		request.Parameters = &RequestParameters{}
 	}
 
 	err = utils.Retry(

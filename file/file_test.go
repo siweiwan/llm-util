@@ -118,7 +118,7 @@ func TestDescribeFileStatus(t *testing.T) {
 		t.Skip("跳过: 未设置 TEST_FILE_ID 环境变量")
 	}
 
-	status, err := describeFileStatus(fileId)
+	status, err := DescribeFileStatus(fileId)
 	if err != nil {
 		t.Fatalf("describeFileStatus 失败: %v", err)
 	}

@@ -78,6 +78,12 @@ func WithTimeout(timeout time.Duration) ConfigOption {
 	}
 }
 
+func WithWorkspace(workspace string) ConfigOption {
+	return func(config *ClientConfig) {
+		config.Workspace = workspace
+	}
+}
+
 func WithHTTPClient(client *http.Client) ConfigOption {
 	return func(config *ClientConfig) {
 		config.HTTPClient = client

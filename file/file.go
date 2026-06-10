@@ -248,7 +248,7 @@ func registerFile(leaseId string) (string, error) {
 // waitReady 轮询文件状态直到就绪或失败
 func waitReady(fileId string) error {
 	for i := 0; i < maxPollAttempts; i++ {
-		status, err := describeFileStatus(fileId)
+		status, err := DescribeFileStatus(fileId)
 		if err != nil {
 			return err
 		}
@@ -267,8 +267,8 @@ func waitReady(fileId string) error {
 	return fmt.Errorf("等待文件就绪超时")
 }
 
-// describeFileStatus 查询文件当前状态
-func describeFileStatus(fileId string) (string, error) {
+// DescribeFileStatus 查询文件当前状态
+func DescribeFileStatus(fileId string) (string, error) {
 	client, err := CreateClient()
 	if err != nil {
 		return "", fmt.Errorf("创建SDK客户端失败: %w", err)
@@ -293,7 +293,7 @@ func describeFileStatus(fileId string) (string, error) {
 	// 限流处理：状态码 429 时等待后重试
 	if resp.Body.Status != nil && *resp.Body.Status == "429" {
 		time.Sleep(throttleWait)
-		return describeFileStatus(fileId)
+		return DescribeFileStatus(fileId)
 	}
 
 	if resp.Body.Data == nil || resp.Body.Data.Status == nil {

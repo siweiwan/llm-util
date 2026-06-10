@@ -36,7 +36,8 @@ func (c *Client) CreateChatCompletionStream(ctx context.Context, request ChatCom
 ) (stream *ChatCompletionStream, err error) {
 
 	if request.Parameters == nil {
-		request.Parameters = &RequestParameters{IncrementalOutput: true}
+		trueVal := true
+		request.Parameters = &RequestParameters{IncrementalOutput: &trueVal}
 	}
 
 	err = utils.Retry(
