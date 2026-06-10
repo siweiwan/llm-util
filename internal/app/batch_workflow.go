@@ -41,7 +41,6 @@ func (a *App) RunWorkflowQueryRule(poolSize int, progress chan<- tui.ProgressMsg
 	pool, _ := ants.NewPool(poolSize)
 	defer pool.Release()
 
-	var errCount int
 	totalRows := len(rows) - 1
 
 	for i, row := range rows {
@@ -54,7 +53,7 @@ func (a *App) RunWorkflowQueryRule(poolSize int, progress chan<- tui.ProgressMsg
 		}
 		question := row[0]
 
-		if len(row) >= 2 && row[1] != "" {
+		if len(row) >= 3 && row[2] == "完成" {
 			progress <- tui.ProgressMsg{Index: i, Total: totalRows, Filename: question, Status: "skip"}
 			continue
 		}
@@ -69,7 +68,7 @@ func (a *App) RunWorkflowQueryRule(poolSize int, progress chan<- tui.ProgressMsg
 			defer wg.Done()
 
 			argsM := make(map[string]string)
-			for col := 2; col < len(head) && col < len(rowCopy); col++ {
+			for col := 3; col < len(head) && col < len(rowCopy); col++ {
 				argsM[head[col]] = rowCopy[col]
 			}
 
@@ -82,16 +81,17 @@ func (a *App) RunWorkflowQueryRule(poolSize int, progress chan<- tui.ProgressMsg
 			})
 			if err != nil {
 				slog.Error("RunWorkflowQueryRule task failed", "row", iCopy, "prompt", question, "err", err)
-				progress <- tui.ProgressMsg{Index: iCopy, Total: totalRows, Filename: question, Status: "error"}
 				mu.Lock()
-				errCount++
+				file.SetCellValue("Sheet1", fmt.Sprintf("C%d", iCopy+1), "失败")
 				mu.Unlock()
+				progress <- tui.ProgressMsg{Index: iCopy, Total: totalRows, Filename: question, Status: "error"}
 				return
 			}
 
 			slog.Info("RunWorkflowQueryRule task done", "row", iCopy, "prompt", question, "response_len", len(response.Output.Text))
 			mu.Lock()
 			file.SetCellValue("Sheet1", fmt.Sprintf("B%d", iCopy+1), response.Output.Text)
+			file.SetCellValue("Sheet1", fmt.Sprintf("C%d", iCopy+1), "完成")
 			mu.Unlock()
 
 			progress <- tui.ProgressMsg{Index: iCopy, Total: totalRows, Filename: question, Status: "done"}

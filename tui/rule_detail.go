@@ -32,7 +32,7 @@ const helpModeA = `# 模式A — 批量请求
 | 提问内容 | （AI填写） | （自动） | （自动） | （自动） |
 
 - 第 1 行标题，第 2 行起处理
-- B 列有值自动跳过，支持断点续传
+- C 列为“完成”时自动跳过，失败行重新处理（断点续传）
 - 每处理10条保存一次进度，避免中断后数据丢失
 
 `
@@ -56,7 +56,7 @@ const helpModeB = `# 模式B — 批量请求
 | 提问内容 | (自动填充) | (AI填写) | (自动) | (自动) | (自动) |
 
 - 第 1 行标题，第 2 行起处理
-- D 列有值自动跳过，支持断点续传
+- D 列为“完成”时自动跳过，失败行重新处理（断点续传）
 - 每处理10条保存一次进度，避免中断后数据丢失
 `
 
@@ -66,14 +66,15 @@ const helpDiyQuery = `# DIY 提问
 
 ## 模板格式 (process.xlsx)
 
-| A 列 | B 列 | C 列 |
-|------|------|------|
-| 问题1 | 文件1.pdf | （留空） |
-| 问题2 | 文件2.pdf | （留空） |
+| A 列 | B 列 | C 列 | D 列 | E 列 |
+|------|------|------|------|------|
+| 问题1 | 文件1.pdf | （留空） | （自动） | （自动） |
+| 问题2 | 文件2.pdf | （留空） | （自动） | （自动） |
 
 - A 列：提问内容
 - B 列：**files/** 目录下的文件名
 - C 列：留空，AI 回复自动填入
+- D 列为“完成”时自动跳过，失败行重新处理（断点续传）
 
 ## 文件准备
 
@@ -86,14 +87,15 @@ const helpWorkflow = `# 工作流调用
 
 ## 模板格式 (workflow.xlsx)
 
-| question | answer | 参数1 | 参数2 | ... |
-|----------|--------|-------|-------|-----|
-| 提问内容 | （留空）| 值 | 值 | ... |
+| question | answer | status | 参数1 | 参数2 | ... |
+|----------|--------|--------|-------|-------|-----|
+| 提问内容 | （留空）| （自动） | 值 | 值 | ... |
 
 - 第 1 行为参数名（表头）
 - 第 2 行起每行一条请求
 - A 列为问题，B 列为回答（自动填入）
-- C 列及以后为自定义参数，列名即参数名
+- C 列为“完成”时自动跳过，失败行重新处理（断点续传）
+- D 列及以后为自定义参数，列名即参数名
 `
 
 type ruleDetailView int
@@ -482,11 +484,13 @@ func generateDIYTemplate() (string, string, error) {
 		Fill:      excelize.Fill{Type: "pattern", Color: []string{"#06B6D4"}, Pattern: 1},
 		Alignment: &excelize.Alignment{Horizontal: "center"},
 	})
-	f.SetSheetRow("Sheet1", "A1", &[]string{"问题", "文件名", "回答"})
-	f.SetCellStyle("Sheet1", "A1", "C1", headerStyle)
+	f.SetSheetRow("Sheet1", "A1", &[]string{"问题", "文件名", "回答", "status", "errMsg"})
+	f.SetCellStyle("Sheet1", "A1", "E1", headerStyle)
 	f.SetColWidth("Sheet1", "A", "A", 40)
 	f.SetColWidth("Sheet1", "B", "B", 30)
 	f.SetColWidth("Sheet1", "C", "C", 40)
+	f.SetColWidth("Sheet1", "D", "D", 12)
+	f.SetColWidth("Sheet1", "E", "E", 40)
 	f.SetPanes("Sheet1", &excelize.Panes{
 		Freeze:      true,
 		YSplit:      1,
@@ -509,10 +513,11 @@ func generateWorkflowTemplate() (string, string, error) {
 		Fill:      excelize.Fill{Type: "pattern", Color: []string{"#06B6D4"}, Pattern: 1},
 		Alignment: &excelize.Alignment{Horizontal: "center"},
 	})
-	f.SetSheetRow("Sheet1", "A1", &[]string{"question", "answer", "参数1", "参数2"})
-	f.SetCellStyle("Sheet1", "A1", "D1", headerStyle)
+	f.SetSheetRow("Sheet1", "A1", &[]string{"question", "answer", "status", "参数1", "参数2"})
+	f.SetCellStyle("Sheet1", "A1", "E1", headerStyle)
 	f.SetColWidth("Sheet1", "A", "B", 40)
-	f.SetColWidth("Sheet1", "C", "D", 20)
+	f.SetColWidth("Sheet1", "C", "C", 12)
+	f.SetColWidth("Sheet1", "D", "E", 20)
 	f.SetPanes("Sheet1", &excelize.Panes{
 		Freeze:      true,
 		YSplit:      1,

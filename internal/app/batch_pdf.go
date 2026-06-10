@@ -68,8 +68,8 @@ func (a *App) RunModeB(poolSize int, xlsxFile string, progress chan<- tui.Progre
 			filePath = path.Join(fileDir, fileName)
 		}
 
-		// Skip if status column (D) already has value (断点续传)
-		if len(row) >= 4 && row[3] != "" {
+		// Skip if status column (D) is "完成" (断点续传，失败行会重试)
+		if len(row) >= 4 && row[3] == "完成" {
 			progress <- tui.ProgressMsg{Index: i, Total: totalRows, Filename: request, Status: "skip"}
 			continue
 		}

@@ -55,8 +55,8 @@ func (a *App) RunDIYQueryRule(poolSize int, progress chan<- tui.ProgressMsg) err
 
 		if len(row) < 2 {
 			continue
-		} else if len(row) > 2 {
-			if row[2] != "" {
+		} else if len(row) > 3 {
+			if row[3] == "完成" {
 				progress <- tui.ProgressMsg{Index: i, Total: totalRows, Filename: row[1], Status: "skip"}
 				continue
 			}
@@ -83,6 +83,11 @@ func (a *App) RunDIYQueryRule(poolSize int, progress chan<- tui.ProgressMsg) err
 			answer, err := a.SendRequestWithFile(input, filePath)
 			if err != nil {
 				slog.Error("RunDIYQueryRule task failed", "row", i, "file", fileName, "err", err)
+				mu.Lock()
+				excelFile.SetCellValue("Sheet1", fmt.Sprintf("D%d", i+1), "失败")
+				excelFile.SetCellValue("Sheet1", fmt.Sprintf("E%d", i+1), err.Error())
+				excelFile.Save()
+				mu.Unlock()
 				progress <- tui.ProgressMsg{Index: i, Total: totalRows, Filename: fileName, Status: "error"}
 				return
 			}
@@ -90,6 +95,7 @@ func (a *App) RunDIYQueryRule(poolSize int, progress chan<- tui.ProgressMsg) err
 
 			mu.Lock()
 			excelFile.SetCellValue("Sheet1", fmt.Sprintf("C%d", i+1), answer)
+			excelFile.SetCellValue("Sheet1", fmt.Sprintf("D%d", i+1), "完成")
 			excelFile.Save()
 			mu.Unlock()
 
