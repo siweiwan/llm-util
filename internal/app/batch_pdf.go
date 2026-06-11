@@ -79,6 +79,23 @@ func (a *App) RunModeB(poolSize int, xlsxFile string, progress chan<- tui.Progre
 		wg.Add(1)
 		pool.Submit(func() {
 			defer wg.Done()
+			defer func() {
+				if r := recover(); r != nil {
+					err := fmt.Errorf("SDK panic: %v", r)
+					slog.Error("RunModeB SDK panic recovered", "row", i, "err", err)
+					mu.Lock()
+					file.SetCellValue("Sheet1", fmt.Sprintf("D%d", i+1), "失败")
+					file.SetCellValue("Sheet1", fmt.Sprintf("F%d", i+1), err.Error())
+					saveCounter++
+					if saveCounter >= 10 {
+						_ = file.Save()
+						saveCounter = 0
+					}
+					mu.Unlock()
+					progress <- tui.ProgressMsg{Index: i, Total: totalRows, Filename: request, Status: "error"}
+				}
+			}()
+
 			rowIdx := i
 			req := request
 			fp := filePath

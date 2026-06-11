@@ -63,6 +63,22 @@ func (a *App) RunModeA(poolSize int, filename string, progress chan<- tui.Progre
 		wg.Add(1)
 		pool.Submit(func() {
 			defer wg.Done()
+			defer func() {
+				if r := recover(); r != nil {
+					err := fmt.Errorf("SDK panic: %v", r)
+					slog.Error("RunModeA SDK panic recovered", "row", i, "err", err)
+					mu.Lock()
+					file.SetCellValue("Sheet1", fmt.Sprintf("C%d", i+1), "失败")
+					file.SetCellValue("Sheet1", fmt.Sprintf("E%d", i+1), err.Error())
+					saveCounter++
+					if saveCounter >= 10 {
+						_ = file.Save()
+						saveCounter = 0
+					}
+					mu.Unlock()
+					progress <- tui.ProgressMsg{Index: i, Total: totalRows, Filename: prompt, Status: "error"}
+				}
+			}()
 			rowIdx := i
 			req := prompt
 

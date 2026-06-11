@@ -79,6 +79,18 @@ func (a *App) RunDIYQueryRule(poolSize int, progress chan<- tui.ProgressMsg) err
 			filePath := dir + "/files/" + fileName
 
 			defer wg.Done()
+			defer func() {
+				if r := recover(); r != nil {
+					err := fmt.Errorf("SDK panic: %v", r)
+					slog.Error("RunDIY SDK panic recovered", "row", i, "err", err)
+					mu.Lock()
+					excelFile.SetCellValue("Sheet1", fmt.Sprintf("D%d", i+1), "失败")
+					excelFile.SetCellValue("Sheet1", fmt.Sprintf("E%d", i+1), err.Error())
+					_ = excelFile.Save()
+					mu.Unlock()
+					progress <- tui.ProgressMsg{Index: i, Total: totalRows, Filename: fileName, Status: "error"}
+				}
+			}()
 
 			answer, err := a.SendRequestWithFile(input, filePath)
 			if err != nil {
@@ -86,7 +98,7 @@ func (a *App) RunDIYQueryRule(poolSize int, progress chan<- tui.ProgressMsg) err
 				mu.Lock()
 				excelFile.SetCellValue("Sheet1", fmt.Sprintf("D%d", i+1), "失败")
 				excelFile.SetCellValue("Sheet1", fmt.Sprintf("E%d", i+1), err.Error())
-				excelFile.Save()
+				_ = excelFile.Save()
 				mu.Unlock()
 				progress <- tui.ProgressMsg{Index: i, Total: totalRows, Filename: fileName, Status: "error"}
 				return
@@ -96,7 +108,7 @@ func (a *App) RunDIYQueryRule(poolSize int, progress chan<- tui.ProgressMsg) err
 			mu.Lock()
 			excelFile.SetCellValue("Sheet1", fmt.Sprintf("C%d", i+1), answer)
 			excelFile.SetCellValue("Sheet1", fmt.Sprintf("D%d", i+1), "完成")
-			excelFile.Save()
+			_ = excelFile.Save()
 			mu.Unlock()
 
 			progress <- tui.ProgressMsg{Index: i, Total: totalRows, Filename: fileName, Status: "done"}

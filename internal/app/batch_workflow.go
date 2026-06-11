@@ -66,6 +66,16 @@ func (a *App) RunWorkflowQueryRule(poolSize int, progress chan<- tui.ProgressMsg
 		wg.Add(1)
 		_ = pool.Submit(func() {
 			defer wg.Done()
+			defer func() {
+				if r := recover(); r != nil {
+					err := fmt.Errorf("SDK panic: %v", r)
+					slog.Error("RunWorkflow SDK panic recovered", "row", iCopy, "err", err)
+					mu.Lock()
+					file.SetCellValue("Sheet1", fmt.Sprintf("C%d", iCopy+1), "失败")
+					mu.Unlock()
+					progress <- tui.ProgressMsg{Index: iCopy, Total: totalRows, Filename: question, Status: "error"}
+				}
+			}()
 
 			argsM := make(map[string]string)
 			for col := 3; col < len(head) && col < len(rowCopy); col++ {
