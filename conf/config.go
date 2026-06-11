@@ -5,10 +5,12 @@ var AppVersion = "dev"
 
 // Config 应用配置，所有可配置项集中管理
 type Config struct {
-	APIKey      string
-	AppID       string
-	WorkspaceID string
-	PoolSize    int
+	APIKey          string
+	AppID           string
+	WorkspaceID     string
+	PoolSize        int
+	AccessKeyId     string
+	AccessKeySecret string
 }
 
 // DefaultConfig 返回默认配置

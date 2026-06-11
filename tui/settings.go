@@ -9,11 +9,15 @@ import (
 	"github.com/charmbracelet/lipgloss"
 )
 
+const settingsFieldCount = 6
+
 type settingsPanel struct {
 	apiKeyInput      textinput.Model
 	appIdInput       textinput.Model
 	workspaceIdInput textinput.Model
 	poolSizeInput    textinput.Model
+	akIdInput        textinput.Model
+	akSecretInput    textinput.Model
 	focusIndex       int
 	saved            bool
 }
@@ -42,6 +46,18 @@ func newSettingsPanel(cfg *conf.Config) settingsPanel {
 	ps.Width = 10
 	ps.CharLimit = 3
 
+	akId := textinput.New()
+	akId.Placeholder = "输入 AccessKey ID..."
+	akId.SetValue(cfg.AccessKeyId)
+	akId.Width = 60
+
+	akSecret := textinput.New()
+	akSecret.Placeholder = "输入 AccessKey Secret..."
+	akSecret.SetValue(cfg.AccessKeySecret)
+	akSecret.EchoMode = textinput.EchoPassword
+	akSecret.EchoCharacter = '*'
+	akSecret.Width = 60
+
 	ak.Focus()
 
 	return settingsPanel{
@@ -49,6 +65,8 @@ func newSettingsPanel(cfg *conf.Config) settingsPanel {
 		appIdInput:       aid,
 		workspaceIdInput: ws,
 		poolSizeInput:    ps,
+		akIdInput:        akId,
+		akSecretInput:    akSecret,
 		focusIndex:       0,
 	}
 }
@@ -58,6 +76,8 @@ func (sp *settingsPanel) reset(cfg *conf.Config) {
 	sp.appIdInput.SetValue(cfg.AppID)
 	sp.workspaceIdInput.SetValue(cfg.WorkspaceID)
 	sp.poolSizeInput.SetValue(strconv.Itoa(cfg.PoolSize))
+	sp.akIdInput.SetValue(cfg.AccessKeyId)
+	sp.akSecretInput.SetValue(cfg.AccessKeySecret)
 	sp.saved = false
 }
 
@@ -70,10 +90,10 @@ func (m Model) updateSettings(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.settings.saved = false
 			return m, nil
 		case "tab":
-			m.settings.focusIndex = (m.settings.focusIndex + 1) % 4
+			m.settings.focusIndex = (m.settings.focusIndex + 1) % settingsFieldCount
 			return m, m.settings.focusInput()
 		case "shift+tab":
-			m.settings.focusIndex = (m.settings.focusIndex - 1 + 4) % 4
+			m.settings.focusIndex = (m.settings.focusIndex - 1 + settingsFieldCount) % settingsFieldCount
 			return m, m.settings.focusInput()
 		case "enter":
 			m.cfg.APIKey = m.settings.apiKeyInput.Value()
@@ -86,6 +106,8 @@ func (m Model) updateSettings(msg tea.Msg) (tea.Model, tea.Cmd) {
 				ps = 200
 			}
 			m.cfg.PoolSize = ps
+			m.cfg.AccessKeyId = m.settings.akIdInput.Value()
+			m.cfg.AccessKeySecret = m.settings.akSecretInput.Value()
 			if m.OnSaveSettings != nil {
 				_ = m.OnSaveSettings(m.cfg)
 			}
@@ -104,6 +126,10 @@ func (m Model) updateSettings(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.settings.workspaceIdInput, cmd = m.settings.workspaceIdInput.Update(msg)
 	case 3:
 		m.settings.poolSizeInput, cmd = m.settings.poolSizeInput.Update(msg)
+	case 4:
+		m.settings.akIdInput, cmd = m.settings.akIdInput.Update(msg)
+	case 5:
+		m.settings.akSecretInput, cmd = m.settings.akSecretInput.Update(msg)
 	}
 	return m, cmd
 }
@@ -113,6 +139,8 @@ func (sp *settingsPanel) focusInput() tea.Cmd {
 	sp.appIdInput.Blur()
 	sp.workspaceIdInput.Blur()
 	sp.poolSizeInput.Blur()
+	sp.akIdInput.Blur()
+	sp.akSecretInput.Blur()
 	switch sp.focusIndex {
 	case 0:
 		return sp.apiKeyInput.Focus()
@@ -122,6 +150,10 @@ func (sp *settingsPanel) focusInput() tea.Cmd {
 		return sp.workspaceIdInput.Focus()
 	case 3:
 		return sp.poolSizeInput.Focus()
+	case 4:
+		return sp.akIdInput.Focus()
+	case 5:
+		return sp.akSecretInput.Focus()
 	}
 	return nil
 }
@@ -135,6 +167,8 @@ func (m Model) settingsView() string {
 	appLabel := labelStyle.Render("AppId:")
 	wsLabel := labelStyle.Render("Workspace ID:")
 	poolLabel := labelStyle.Render("并发数:")
+	akIdLabel := labelStyle.Render("AccessKey ID:")
+	akSecretLabel := labelStyle.Render("AccessKey Secret:")
 
 	if m.settings.saved {
 		title += " " + SuccessStyle.Render("✅ 已保存")
@@ -152,6 +186,12 @@ func (m Model) settingsView() string {
 		"",
 		poolLabel,
 		m.settings.poolSizeInput.View(),
+		"",
+		akIdLabel,
+		m.settings.akIdInput.View(),
+		"",
+		akSecretLabel,
+		m.settings.akSecretInput.View(),
 	)
 
 	help := HelpStyle.Render("enter 保存  tab 切换  esc 返回")

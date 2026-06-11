@@ -25,6 +25,7 @@ func SaveEnvFile(cfg *conf.Config) error {
 	}
 	lines := strings.Split(string(data), "\n")
 	updatedKey, updatedId, updatedWs, updatedPool := false, false, false, false
+	updatedAkId, updatedAkSecret := false, false
 	for i, line := range lines {
 		if strings.HasPrefix(line, "LLM_API_KEY=") {
 			lines[i] = "LLM_API_KEY=" + cfg.APIKey
@@ -42,6 +43,14 @@ func SaveEnvFile(cfg *conf.Config) error {
 			lines[i] = fmt.Sprintf("POOL_SIZE=%d", cfg.PoolSize)
 			updatedPool = true
 		}
+		if strings.HasPrefix(line, "ALIBABA_CLOUD_ACCESS_KEY_ID=") {
+			lines[i] = "ALIBABA_CLOUD_ACCESS_KEY_ID=" + cfg.AccessKeyId
+			updatedAkId = true
+		}
+		if strings.HasPrefix(line, "ALIBABA_CLOUD_ACCESS_KEY_SECRET=") {
+			lines[i] = "ALIBABA_CLOUD_ACCESS_KEY_SECRET=" + cfg.AccessKeySecret
+			updatedAkSecret = true
+		}
 	}
 	if !updatedKey {
 		lines = append(lines, "LLM_API_KEY="+cfg.APIKey)
@@ -54,6 +63,12 @@ func SaveEnvFile(cfg *conf.Config) error {
 	}
 	if !updatedPool {
 		lines = append(lines, fmt.Sprintf("POOL_SIZE=%d", cfg.PoolSize))
+	}
+	if !updatedAkId {
+		lines = append(lines, "ALIBABA_CLOUD_ACCESS_KEY_ID="+cfg.AccessKeyId)
+	}
+	if !updatedAkSecret {
+		lines = append(lines, "ALIBABA_CLOUD_ACCESS_KEY_SECRET="+cfg.AccessKeySecret)
 	}
 	return os.WriteFile(".env", []byte(strings.Join(lines, "\n")), 0644)
 }

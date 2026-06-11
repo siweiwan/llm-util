@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"llm-util/conf"
+	uploadfile "llm-util/file"
 	"llm-util/internal/app"
 	"llm-util/tui"
 	"llm-util/util/logger"
@@ -33,7 +34,17 @@ func main() {
 	if ps, _ := strconv.Atoi(os.Getenv("POOL_SIZE")); ps > 0 {
 		cfg.PoolSize = ps
 	}
+	cfg.AccessKeyId = os.Getenv("ALIBABA_CLOUD_ACCESS_KEY_ID")
+	cfg.AccessKeySecret = os.Getenv("ALIBABA_CLOUD_ACCESS_KEY_SECRET")
 	conf.WORKSPACE_ID = cfg.WorkspaceID // 同步全局变量
+
+	// 同步 AK/SK 到文件上传模块
+	if cfg.AccessKeyId != "" {
+		uploadfile.AccessKeyId = cfg.AccessKeyId
+	}
+	if cfg.AccessKeySecret != "" {
+		uploadfile.AccessKeySecret = cfg.AccessKeySecret
+	}
 
 	slog.Info("应用启动", "appId", cfg.AppID, "workspaceId", cfg.WorkspaceID, "poolSize", cfg.PoolSize)
 
@@ -44,6 +55,8 @@ func main() {
 		a.APIKey = c.APIKey
 		a.AppId = c.AppID
 		conf.WORKSPACE_ID = c.WorkspaceID
+		uploadfile.AccessKeyId = c.AccessKeyId
+		uploadfile.AccessKeySecret = c.AccessKeySecret
 		slog.Info("设置已保存", "appId", c.AppID, "workspaceId", c.WorkspaceID, "poolSize", c.PoolSize)
 		return app.SaveEnvFile(c)
 	}
