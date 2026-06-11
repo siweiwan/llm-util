@@ -48,11 +48,11 @@ func (a *App) RunModeA(poolSize int, filename string, progress chan<- tui.Progre
 		if i == 0 {
 			continue
 		}
-		prompt := row[0]
-		if prompt == "" {
-			progress <- tui.ProgressMsg{Index: i, Total: totalRows, Filename: prompt, Status: "skip"}
+		if len(row) == 0 || row[0] == "" {
+			progress <- tui.ProgressMsg{Index: i, Total: totalRows, Status: "skip"}
 			continue
 		}
+		prompt := row[0]
 		if len(row) >= 3 && row[2] == "完成" {
 			progress <- tui.ProgressMsg{Index: i, Total: totalRows, Filename: prompt, Status: "skip"}
 			continue
@@ -61,26 +61,26 @@ func (a *App) RunModeA(poolSize int, filename string, progress chan<- tui.Progre
 		progress <- tui.ProgressMsg{Index: i, Total: totalRows, Filename: prompt, Status: "processing"}
 
 		wg.Add(1)
+		rowIdx := i
+		req := prompt
 		pool.Submit(func() {
 			defer wg.Done()
 			defer func() {
 				if r := recover(); r != nil {
 					err := fmt.Errorf("SDK panic: %v", r)
-					slog.Error("RunModeA SDK panic recovered", "row", i, "err", err)
+					slog.Error("RunModeA SDK panic recovered", "row", rowIdx, "err", err)
 					mu.Lock()
-					file.SetCellValue("Sheet1", fmt.Sprintf("C%d", i+1), "失败")
-					file.SetCellValue("Sheet1", fmt.Sprintf("E%d", i+1), err.Error())
+					file.SetCellValue("Sheet1", fmt.Sprintf("C%d", rowIdx+1), "失败")
+					file.SetCellValue("Sheet1", fmt.Sprintf("E%d", rowIdx+1), err.Error())
 					saveCounter++
 					if saveCounter >= 10 {
 						_ = file.Save()
 						saveCounter = 0
 					}
 					mu.Unlock()
-					progress <- tui.ProgressMsg{Index: i, Total: totalRows, Filename: prompt, Status: "error"}
+					progress <- tui.ProgressMsg{Index: rowIdx, Total: totalRows, Filename: req, Status: "error"}
 				}
 			}()
-			rowIdx := i
-			req := prompt
 
 			resp, err := client.CreateChatCompletion(context.Background(), bailian.ChatCompletionRequest{
 				Input: &bailian.RequestInput{Prompt: req},

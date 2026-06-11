@@ -77,28 +77,27 @@ func (a *App) RunModeB(poolSize int, xlsxFile string, progress chan<- tui.Progre
 		progress <- tui.ProgressMsg{Index: i, Total: totalRows, Filename: request, Status: "processing"}
 
 		wg.Add(1)
+		rowIdx := i
+		req := request
+		fp := filePath
 		pool.Submit(func() {
 			defer wg.Done()
 			defer func() {
 				if r := recover(); r != nil {
 					err := fmt.Errorf("SDK panic: %v", r)
-					slog.Error("RunModeB SDK panic recovered", "row", i, "err", err)
+					slog.Error("RunModeB SDK panic recovered", "row", rowIdx, "err", err)
 					mu.Lock()
-					file.SetCellValue("Sheet1", fmt.Sprintf("D%d", i+1), "失败")
-					file.SetCellValue("Sheet1", fmt.Sprintf("F%d", i+1), err.Error())
+					file.SetCellValue("Sheet1", fmt.Sprintf("D%d", rowIdx+1), "失败")
+					file.SetCellValue("Sheet1", fmt.Sprintf("F%d", rowIdx+1), err.Error())
 					saveCounter++
 					if saveCounter >= 10 {
 						_ = file.Save()
 						saveCounter = 0
 					}
 					mu.Unlock()
-					progress <- tui.ProgressMsg{Index: i, Total: totalRows, Filename: request, Status: "error"}
+					progress <- tui.ProgressMsg{Index: rowIdx, Total: totalRows, Filename: req, Status: "error"}
 				}
 			}()
-
-			rowIdx := i
-			req := request
-			fp := filePath
 
 			resp, err := a.SendRequestWithFile(req, fp)
 

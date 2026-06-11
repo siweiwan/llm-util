@@ -59,6 +59,7 @@ func (a *App) RunWorkflowQueryRule(poolSize int, progress chan<- tui.ProgressMsg
 		}
 
 		iCopy := i
+		questionCopy := question
 		rowCopy := append([]string{}, row...)
 
 		progress <- tui.ProgressMsg{Index: i, Total: totalRows, Filename: question, Status: "processing"}
@@ -73,7 +74,7 @@ func (a *App) RunWorkflowQueryRule(poolSize int, progress chan<- tui.ProgressMsg
 					mu.Lock()
 					file.SetCellValue("Sheet1", fmt.Sprintf("C%d", iCopy+1), "失败")
 					mu.Unlock()
-					progress <- tui.ProgressMsg{Index: iCopy, Total: totalRows, Filename: question, Status: "error"}
+					progress <- tui.ProgressMsg{Index: iCopy, Total: totalRows, Filename: questionCopy, Status: "error"}
 				}
 			}()
 
@@ -85,26 +86,26 @@ func (a *App) RunWorkflowQueryRule(poolSize int, progress chan<- tui.ProgressMsg
 			client := bailian.NewClientWithAppIDAPIKey(a.AppId, a.APIKey)
 			response, err := client.CreateChatCompletion(context.TODO(), bailian.ChatCompletionRequest{
 				Input: &bailian.RequestInput{
-					Prompt:    question,
+					Prompt:    questionCopy,
 					BizParams: argsM,
 				},
 			})
 			if err != nil {
-				slog.Error("RunWorkflowQueryRule task failed", "row", iCopy, "prompt", question, "err", err)
+				slog.Error("RunWorkflowQueryRule task failed", "row", iCopy, "prompt", questionCopy, "err", err)
 				mu.Lock()
 				file.SetCellValue("Sheet1", fmt.Sprintf("C%d", iCopy+1), "失败")
 				mu.Unlock()
-				progress <- tui.ProgressMsg{Index: iCopy, Total: totalRows, Filename: question, Status: "error"}
+				progress <- tui.ProgressMsg{Index: iCopy, Total: totalRows, Filename: questionCopy, Status: "error"}
 				return
 			}
 
-			slog.Info("RunWorkflowQueryRule task done", "row", iCopy, "prompt", question, "response_len", len(response.Output.Text))
+			slog.Info("RunWorkflowQueryRule task done", "row", iCopy, "prompt", questionCopy, "response_len", len(response.Output.Text))
 			mu.Lock()
 			file.SetCellValue("Sheet1", fmt.Sprintf("B%d", iCopy+1), response.Output.Text)
 			file.SetCellValue("Sheet1", fmt.Sprintf("C%d", iCopy+1), "完成")
 			mu.Unlock()
 
-			progress <- tui.ProgressMsg{Index: iCopy, Total: totalRows, Filename: question, Status: "done"}
+			progress <- tui.ProgressMsg{Index: iCopy, Total: totalRows, Filename: questionCopy, Status: "done"}
 		})
 	}
 

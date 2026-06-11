@@ -73,45 +73,45 @@ func (a *App) RunDIYQueryRule(poolSize int, progress chan<- tui.ProgressMsg) err
 		progress <- tui.ProgressMsg{Index: i, Total: totalRows, Filename: fileName, Status: "processing"}
 
 		wg.Add(1)
+		rowIdx := i
+		input := question
+		fname := fileName
+		filePath := dir + "/files/" + fileName
 		pool.Submit(func() {
-			i := i
-			input := question
-			filePath := dir + "/files/" + fileName
-
 			defer wg.Done()
 			defer func() {
 				if r := recover(); r != nil {
 					err := fmt.Errorf("SDK panic: %v", r)
-					slog.Error("RunDIY SDK panic recovered", "row", i, "err", err)
+					slog.Error("RunDIY SDK panic recovered", "row", rowIdx, "err", err)
 					mu.Lock()
-					excelFile.SetCellValue("Sheet1", fmt.Sprintf("D%d", i+1), "失败")
-					excelFile.SetCellValue("Sheet1", fmt.Sprintf("E%d", i+1), err.Error())
+					excelFile.SetCellValue("Sheet1", fmt.Sprintf("D%d", rowIdx+1), "失败")
+					excelFile.SetCellValue("Sheet1", fmt.Sprintf("E%d", rowIdx+1), err.Error())
 					_ = excelFile.Save()
 					mu.Unlock()
-					progress <- tui.ProgressMsg{Index: i, Total: totalRows, Filename: fileName, Status: "error"}
+					progress <- tui.ProgressMsg{Index: rowIdx, Total: totalRows, Filename: fname, Status: "error"}
 				}
 			}()
 
 			answer, err := a.SendRequestWithFile(input, filePath)
 			if err != nil {
-				slog.Error("RunDIYQueryRule task failed", "row", i, "file", fileName, "err", err)
+				slog.Error("RunDIYQueryRule task failed", "row", rowIdx, "file", fname, "err", err)
 				mu.Lock()
-				excelFile.SetCellValue("Sheet1", fmt.Sprintf("D%d", i+1), "失败")
-				excelFile.SetCellValue("Sheet1", fmt.Sprintf("E%d", i+1), err.Error())
+				excelFile.SetCellValue("Sheet1", fmt.Sprintf("D%d", rowIdx+1), "失败")
+				excelFile.SetCellValue("Sheet1", fmt.Sprintf("E%d", rowIdx+1), err.Error())
 				_ = excelFile.Save()
 				mu.Unlock()
-				progress <- tui.ProgressMsg{Index: i, Total: totalRows, Filename: fileName, Status: "error"}
+				progress <- tui.ProgressMsg{Index: rowIdx, Total: totalRows, Filename: fname, Status: "error"}
 				return
 			}
-			slog.Info("RunDIYQueryRule task done", "row", i, "file", fileName, "response_len", len(answer))
+			slog.Info("RunDIYQueryRule task done", "row", rowIdx, "file", fname, "response_len", len(answer))
 
 			mu.Lock()
-			excelFile.SetCellValue("Sheet1", fmt.Sprintf("C%d", i+1), answer)
-			excelFile.SetCellValue("Sheet1", fmt.Sprintf("D%d", i+1), "完成")
+			excelFile.SetCellValue("Sheet1", fmt.Sprintf("C%d", rowIdx+1), answer)
+			excelFile.SetCellValue("Sheet1", fmt.Sprintf("D%d", rowIdx+1), "完成")
 			_ = excelFile.Save()
 			mu.Unlock()
 
-			progress <- tui.ProgressMsg{Index: i, Total: totalRows, Filename: fileName, Status: "done"}
+			progress <- tui.ProgressMsg{Index: rowIdx, Total: totalRows, Filename: fname, Status: "done"}
 		})
 	}
 	wg.Wait()

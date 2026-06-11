@@ -134,7 +134,11 @@ func (m Model) updateBatch(msg tea.Msg) (tea.Model, tea.Cmd) {
 				if len(m.batch.fileList.Items()) == 0 {
 					return m, nil
 				}
-				sel := m.batch.fileList.SelectedItem().(menuItem)
+				item := m.batch.fileList.SelectedItem()
+				if item == nil {
+					return m, nil
+				}
+				sel := item.(menuItem)
 				m.batch.filePicker = false
 				m.batch.running = true
 				m.batch.filename = sel.title
