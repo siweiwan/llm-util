@@ -19,9 +19,18 @@ const helpModeA = `# 模式A — 批量请求
 
 逐行读取 Excel 中的 问题，批量调用百炼应用接口。
 
+## 前置配置
+
+在 **配置管理** 中设置以下信息：
+
+- **API Key**：百炼控制台 → 应用详情 → API Key
+- **AppId**：百炼控制台 → 应用详情 → 应用 ID
+- **Workspace ID**：百炼控制台 → 业务空间管理 → 空间 ID
+  （可在 URL 中找到，如 llm-xxx）
+
 ## 使用步骤
 
-1.  在 **配置管理**，设置 并发数、AppID
+1.  在 **配置管理**，设置 API Key、AppID、并发数
 2.  点击 **模板下载**，生成模板 Excel
 3.  在 **request** 列（A 列）填入每条请求内容
 4.  选择 **运行任务**，选择 Excel 文件，按 Enter 执行
@@ -42,9 +51,21 @@ const helpModeB = `# 模式B — 批量请求
 
 读取文件，批量调用百炼应用接口。
 
+## 前置配置
+
+在 **配置管理** 中设置以下信息：
+
+- **API Key**：百炼控制台 → 应用详情 → API Key
+- **AppId**：百炼控制台 → 应用详情 → 应用 ID
+- **Workspace ID**：百炼控制台 → 业务空间管理 → 空间 ID
+  （可在 URL 中找到，如 llm-xxx）
+- **AccessKey ID / Secret**：阿里云控制台 → AccessKey 管理
+  （建议用 RAM 子账号，授权 AliyunBailianFullAccess）
+  用于文件上传到 OSS，模式 B 必须配置
+
 ## 使用步骤
 
-1. 在 **配置管理** 设置并发数、AppID
+1. 在 **配置管理** 设置以上全部配置
 2. 点击 **选择文件夹** 或 **输入路径**，指定包含目标文件的文件夹
 3. 点击 **模板下载**，生成模板，File 列自动填充
 4. 在 **request** 列（A 列）填入每条请求内容
@@ -64,6 +85,13 @@ const helpModeB = `# 模式B — 批量请求
 const helpDiyQuery = `# DIY 提问
 
 处理 **n × m** 的提问规模（n 个问题 × m 个文件）。
+
+## 前置配置
+
+- **API Key / AppId**：百炼控制台 → 应用详情
+- **Workspace ID**：百炼控制台 → 业务空间管理 → 空间 ID
+- **AccessKey ID / Secret**：阿里云控制台 → AccessKey 管理
+  （用于文件上传，建议用 RAM 子账号，授权 AliyunBailianFullAccess）
 
 ## 模板格式 (process.xlsx)
 
@@ -85,6 +113,11 @@ const helpDiyQuery = `# DIY 提问
 const helpWorkflow = `# 工作流调用
 
 调用百炼应用，传递自定义业务参数。
+
+## 前置配置
+
+- **API Key / AppId**：百炼控制台 → 应用详情
+- **Workspace ID**：百炼控制台 → 业务空间管理 → 空间 ID
 
 ## 模板格式 (workflow.xlsx)
 
