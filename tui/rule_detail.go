@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/charmbracelet/bubbles/list"
+	"github.com/charmbracelet/bubbles/textinput"
 	"github.com/charmbracelet/bubbles/viewport"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/glamour"
@@ -44,8 +45,8 @@ const helpModeB = `# 模式B — 批量请求
 ## 使用步骤
 
 1. 在 **配置管理** 设置并发数、AppID
-2. 点击 **识别文件目录**，选择包含目标文件的文件夹
-3. 点击 **模板下载**，生成模板 Excel（File 列自动填充）
+2. 点击 **选择文件夹** 或 **输入路径**，指定包含目标文件的文件夹
+3. 点击 **模板下载**，生成模板，File 列自动填充
 4. 在 **request** 列（A 列）填入每条请求内容
 5. 选择 **运行任务**，选择填好的 Excel，按 Enter 执行
 
@@ -103,12 +104,14 @@ type ruleDetailView int
 const (
 	ruleDetailMenu ruleDetailView = iota
 	ruleDetailHelp
+	ruleDetailDirInput // 手动输入目录路径
 )
 
 type ruleDetailPanel struct {
 	view         ruleDetailView
 	menu         list.Model
 	helpVP       viewport.Model
+	dirInput     textinput.Model // 手动输入目录路径
 	ruleName     string
 	selectedRule View
 	markdown     string
@@ -122,10 +125,16 @@ func newRuleDetailPanel() ruleDetailPanel {
 	l := buildDefaultDetailMenu()
 	vp := viewport.New(40, 10)
 
+	ti := textinput.New()
+	ti.Placeholder = "输入文件夹路径，如 D:\\docs"
+	ti.CharLimit = 260
+	ti.Width = 50
+
 	return ruleDetailPanel{
-		view:   ruleDetailMenu,
-		menu:   l,
-		helpVP: vp,
+		view:     ruleDetailMenu,
+		menu:     l,
+		helpVP:   vp,
+		dirInput: ti,
 	}
 }
 
@@ -148,7 +157,8 @@ func buildDefaultDetailMenu() list.Model {
 func buildModeBDetailMenu() list.Model {
 	items := []list.Item{
 		menuItem{title: "使用说明", desc: "查看此规则的详细用法"},
-		menuItem{title: "识别文件目录", desc: "选择文件夹，扫描文件列表"},
+		menuItem{title: "选择文件夹", desc: "打开系统目录选择对话框"},
+		menuItem{title: "输入路径", desc: "手动输入文件夹路径"},
 		menuItem{title: "模板下载", desc: "生成模板，File列自动填充"},
 		menuItem{title: "运行任务", desc: "开始执行批量任务"},
 	}
@@ -249,6 +259,42 @@ func (m Model) updateRuleDetail(msg tea.Msg) (tea.Model, tea.Cmd) {
 		var cmd tea.Cmd
 		p.helpVP, cmd = p.helpVP.Update(msg)
 		return m, cmd
+
+	case ruleDetailDirInput:
+		switch msg := msg.(type) {
+		case tea.KeyMsg:
+			switch msg.String() {
+			case "esc":
+				p.dirInput.Blur()
+				p.view = ruleDetailMenu
+				return m, nil
+			case "enter":
+				p.dirInput.Blur()
+				dirPath := p.dirInput.Value()
+				if dirPath == "" {
+					p.view = ruleDetailMenu
+					return m, nil
+				}
+				// 验证目录是否存在
+				info, err := os.Stat(dirPath)
+				if err != nil || !info.IsDir() {
+					p.saved = true
+					p.templateMsg = ErrorStyle.Render("❌ 路径不存在或不是文件夹: " + dirPath)
+					p.view = ruleDetailMenu
+					return m, nil
+				}
+				p.selectedDir = dirPath
+				files := scanDirFiles(dirPath)
+				p.fileCount = len(files)
+				p.saved = true
+				p.templateMsg = SuccessStyle.Render(fmt.Sprintf("✅ 已选择目录，扫描到 %d 个文件", p.fileCount))
+				p.view = ruleDetailMenu
+				return m, nil
+			}
+		}
+		var cmd tea.Cmd
+		p.dirInput, cmd = p.dirInput.Update(msg)
+		return m, cmd
 	}
 	return m, nil
 }
@@ -262,11 +308,16 @@ func (m Model) handleDetailMenuEnter() (tea.Model, tea.Cmd) {
 		switch idx {
 		case 0: // 使用说明
 			return m.showHelp()
-		case 1: // 识别文件目录
+		case 1: // 选择文件夹（系统对话框）
 			return m.startDirPicker()
-		case 2: // 模板下载
+		case 2: // 输入路径（手动输入）
+			p.dirInput.SetValue(p.selectedDir) // 回显已有路径
+			p.dirInput.Focus()
+			p.view = ruleDetailDirInput
+			return m, textinput.Blink
+		case 3: // 模板下载
 			return m.downloadModeBTemplate()
-		case 3: // 运行任务
+		case 4: // 运行任务
 			m.view = p.selectedRule
 			m.batch.reset()
 			return m, m.batch.startCmd()
@@ -354,7 +405,15 @@ func (m Model) ruleDetailView() string {
 
 	switch p.view {
 	case ruleDetailMenu:
-		p.menu.SetHeight(len(p.menu.Items()) * 2)
+		maxH := m.height - 6
+		menuH := len(p.menu.Items()) * 2
+		if menuH > maxH {
+			menuH = maxH
+		}
+		if menuH < 2 {
+			menuH = 2
+		}
+		p.menu.SetHeight(menuH)
 		menu := lipgloss.NewStyle().Padding(1, 2).Render(p.menu.View())
 		help := HelpStyle.Render("↑/↓ 选择  enter 确认  esc 返回")
 		if p.saved {
@@ -367,6 +426,12 @@ func (m Model) ruleDetailView() string {
 		}
 		parts = append(parts, help)
 		return lipgloss.JoinVertical(lipgloss.Center, parts...)
+
+	case ruleDetailDirInput:
+		title := PanelTitleStyle.Render(p.ruleName + " — 输入路径")
+		input := p.dirInput.View()
+		help := HelpStyle.Render("enter 确认  esc 取消")
+		return lipgloss.JoinVertical(lipgloss.Center, title, input, help)
 
 	case ruleDetailHelp:
 		p.helpVP.Width = m.width - 4
