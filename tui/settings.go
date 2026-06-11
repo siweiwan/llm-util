@@ -89,11 +89,11 @@ func (m Model) updateSettings(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.view = ViewMainMenu
 			m.settings.saved = false
 			return m, nil
-		case "tab":
-			m.settings.focusIndex = (m.settings.focusIndex + 1) % settingsFieldCount
-			return m, m.settings.focusInput()
-		case "shift+tab":
+		case "up":
 			m.settings.focusIndex = (m.settings.focusIndex - 1 + settingsFieldCount) % settingsFieldCount
+			return m, m.settings.focusInput()
+		case "down":
+			m.settings.focusIndex = (m.settings.focusIndex + 1) % settingsFieldCount
 			return m, m.settings.focusInput()
 		case "enter":
 			m.cfg.APIKey = m.settings.apiKeyInput.Value()
@@ -194,6 +194,6 @@ func (m Model) settingsView() string {
 		m.settings.akSecretInput.View(),
 	)
 
-	help := HelpStyle.Render("enter 保存  tab 切换  esc 返回")
+	help := HelpStyle.Render("enter 保存  ↑/↓ 切换  esc 返回")
 	return lipgloss.JoinVertical(lipgloss.Left, title, body, help)
 }
